@@ -3,6 +3,7 @@ import type { ChatMessage as ChatMessageT } from '../../types';
 import SuggestedActionCard from './SuggestedActionCard';
 import RouteRecommendationCard from './RouteRecommendationCard';
 import AlternativesStack from './AlternativesStack';
+import MarkdownContent from './MarkdownContent';
 
 type Props = { message: ChatMessageT };
 
@@ -25,8 +26,8 @@ export default function ChatMessage({ message }: Props) {
         <Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
       </div>
       <div className="flex-1 min-w-0 space-y-2">
-        <div className="bg-white border border-black/[0.05] rounded-[20px] rounded-tl-md px-4 py-2.5 text-[15px] leading-snug text-text-primary vl-elev-1 whitespace-pre-line">
-          {message.content}
+        <div className="bg-white border border-black/[0.05] rounded-[20px] rounded-tl-md px-4 py-3 text-[14.5px] leading-snug text-text-primary vl-elev-1">
+          <MarkdownContent text={message.content} />
         </div>
         {message.alternatives && message.alternatives.length > 0 ? (
           <AlternativesStack alternatives={message.alternatives} />
