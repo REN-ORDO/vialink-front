@@ -10,7 +10,6 @@ import {
   Sparkles,
   Clock,
   Bus,
-  Radar,
 } from 'lucide-react';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 
@@ -533,27 +532,12 @@ export default function OnboardingPage() {
           <ArrowUpRight className="w-[18px] h-[18px]" strokeWidth={2.6} />
         </button>
 
-        <button
-          onClick={() => {
-            markOnboarded();
-            navigate('/admin');
-          }}
-          className="cursor-pointer w-full h-12 mt-2.5 rounded-full bg-text-primary text-white text-[14.5px] font-semibold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
-        >
-          <Radar className="w-[15px] h-[15px] text-brand" strokeWidth={2.6} />
-          Ver simulador en vivo
-          <span className="ml-1 inline-flex items-center gap-1 text-[10.5px] font-bold text-success vl-eyebrow">
-            <span className="vl-status-dot text-success" />
-            <span className="pl-1.5">500</span>
-          </span>
-        </button>
-
         {showInstallButton && (
           <button
             onClick={install}
-            className="cursor-pointer w-full h-11 mt-2 rounded-full text-text-secondary text-[13.5px] font-semibold flex items-center justify-center gap-2 active:bg-surface-raised transition-colors"
+            className="cursor-pointer w-full h-12 mt-2.5 rounded-full text-text-primary text-[14.5px] font-semibold flex items-center justify-center gap-2 active:bg-surface-raised transition-colors"
           >
-            <Download className="w-[14px] h-[14px] text-brand" strokeWidth={2.6} />
+            <Download className="w-[15px] h-[15px] text-brand" strokeWidth={2.6} />
             {installLabel}
           </button>
         )}

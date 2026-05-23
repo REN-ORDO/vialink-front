@@ -3,7 +3,6 @@ import MapaPage from './pages/MapaPage';
 import ParaderoPage from './pages/ParaderoPage';
 import AsistentePage from './pages/AsistentePage';
 import ViajePage from './pages/ViajePage';
-import AdminPage from './pages/AdminPage';
 import OnboardingPage, { isOnboarded } from './pages/OnboardingPage';
 
 function HomeGate() {
@@ -19,7 +18,7 @@ export default function App() {
         <Route path="/paradero/:id" element={<ParaderoPage />} />
         <Route path="/asistente" element={<AsistentePage />} />
         <Route path="/viaje/:id" element={<ViajePage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
