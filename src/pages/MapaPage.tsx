@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Sparkles, Navigation2, LocateFixed } from 'lucide-react';
+import { Sparkles, Navigation2, LocateFixed, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MapView from '../components/map/MapView';
 import ParaderoMarker from '../components/map/ParaderoMarker';
@@ -9,11 +9,13 @@ import UserLocationMarker, {
   DisableFollowOnDrag,
 } from '../components/map/UserLocationMarker';
 import BottomSheet from '../components/ui/BottomSheet';
+import AddressSearchBar from '../components/ui/AddressSearchBar';
 import { busesMock, BARRANQUILLA_CENTER } from '../lib/mockData';
 import { useParaderos } from '../hooks/useParaderos';
+import { useBusesAtPoint } from '../hooks/useBusesAtPoint';
 import { useLocation, distanceKm } from '../hooks/useLocation';
 import { useAppStore } from '../store/useAppStore';
-import type { Bus, Paradero } from '../types';
+import type { Bus, LatLng, Paradero } from '../types';
 
 function tickBuses(buses: Bus[]): Bus[] {
   return buses.map((b) => {
@@ -54,14 +56,19 @@ function etaColor(eta: number): string {
 export default function MapaPage() {
   const navigate = useNavigate();
   const [buses, setBuses] = useState<Bus[]>(busesMock);
-  const [query, setQuery] = useState('');
+  const [tappedLocation, setTappedLocation] = useState<LatLng | null>(null);
+  const [tappedLabel, setTappedLabel] = useState<string>('');
   const { data: paraderos, isLoading } = useParaderos();
+  const { data: busesAtPoint, isFetching: isFetchingBusesAtPoint } =
+    useBusesAtPoint(tappedLocation);
   const { lat, lng, status: locStatus } = useLocation();
   const userHeading = useAppStore((s) => s.userHeading);
   const followUser = useAppStore((s) => s.followUser);
   const setFollowUser = useAppStore((s) => s.setFollowUser);
   const hasUserLocation =
     lat != null && lng != null && (locStatus === 'granted' || locStatus === 'idle');
+  const userLocation: LatLng | undefined =
+    lat != null && lng != null ? { lat, lng } : undefined;
 
   useEffect(() => {
     const id = setInterval(() => setBuses((prev) => tickBuses(prev)), 1800);
@@ -78,20 +85,10 @@ export default function MapaPage() {
 
   const sorted = useMemo(() => {
     if (!paraderos) return [];
-    const filtered = query.trim()
-      ? paraderos.filter(
-          (p) =>
-            p.nombre.toLowerCase().includes(query.toLowerCase()) ||
-            p.direccion.toLowerCase().includes(query.toLowerCase()) ||
-            p.rutas.some((r) =>
-              r.nombre.toLowerCase().includes(query.toLowerCase()),
-            ),
-        )
-      : paraderos;
-    return [...filtered].sort(
+    return [...paraderos].sort(
       (a, b) => distanceKm(center, a) - distanceKm(center, b),
     );
-  }, [paraderos, query, center]);
+  }, [paraderos, center]);
 
   return (
     <div className="relative flex-1 overflow-hidden">
@@ -113,23 +110,14 @@ export default function MapaPage() {
 
       <div className="absolute top-0 left-0 right-0 z-30 pt-[max(12px,env(safe-area-inset-top))]">
         <div className="px-4">
-          <div className="h-13 min-h-[52px] flex items-center gap-2.5 bg-white rounded-2xl px-4 vl-elev-3 border border-black/[0.04]">
-            <Search className="w-[18px] h-[18px] text-text-secondary shrink-0" strokeWidth={2.4} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar paradero o ruta"
-              className="flex-1 bg-transparent outline-none text-[15px] placeholder:text-text-secondary/80 vl-headline"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery('')}
-                className="cursor-pointer text-[11px] font-bold text-text-secondary px-2 py-1 rounded-full hover:bg-surface-raised vl-eyebrow"
-              >
-                Limpiar
-              </button>
-            )}
-          </div>
+          <AddressSearchBar
+            proximity={userLocation}
+            placeholder="¿A dónde vas?"
+            onSelect={(s) => {
+              setTappedLocation(s.location);
+              setTappedLabel(s.label);
+            }}
+          />
         </div>
 
         <div className="px-4 mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none">
@@ -140,9 +128,74 @@ export default function MapaPage() {
           />
           <Pill label="Frecuentes" />
           <Pill label="Favoritos" />
-          <Pill label="TransMetro" />
         </div>
       </div>
+
+      {tappedLocation && (
+        <div
+          data-testid="buses-at-point-sheet"
+          className="absolute bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl vl-elev-3 border-t border-black/[0.05] pb-[max(20px,env(safe-area-inset-bottom))]"
+        >
+          <div className="flex items-start justify-between px-5 pt-4 pb-2">
+            <div className="min-w-0">
+              <div className="vl-eyebrow text-text-secondary">Buses que pasan por</div>
+              <h2 className="text-[18px] font-bold text-text-primary truncate vl-headline">
+                {tappedLabel || 'esta ubicación'}
+              </h2>
+            </div>
+            <button
+              aria-label="Cerrar"
+              onClick={() => {
+                setTappedLocation(null);
+                setTappedLabel('');
+              }}
+              className="cursor-pointer shrink-0 w-9 h-9 rounded-full bg-surface-raised flex items-center justify-center active:scale-95"
+            >
+              <X className="w-[16px] h-[16px] text-text-primary" strokeWidth={2.4} />
+            </button>
+          </div>
+          <div className="px-5 pt-2 pb-1">
+            {isFetchingBusesAtPoint && (
+              <div className="text-text-secondary text-sm py-4">Cargando rutas…</div>
+            )}
+            {!isFetchingBusesAtPoint &&
+              (busesAtPoint?.routes.length ?? 0) === 0 && (
+                <div className="text-text-secondary text-sm py-4">
+                  No encontramos buses cerca en este momento.
+                </div>
+              )}
+            {!isFetchingBusesAtPoint &&
+              (busesAtPoint?.routes ?? []).map((r) => {
+                const nextEtaSec = r.next_buses[0]?.eta_seconds ?? null;
+                const etaMin =
+                  nextEtaSec != null ? Math.max(1, Math.round(nextEtaSec / 60)) : null;
+                return (
+                  <div
+                    key={r.route.id}
+                    className="flex items-center gap-3 py-2.5 border-t border-black/[0.05] first:border-t-0"
+                  >
+                    <span
+                      className="inline-flex items-center justify-center min-w-[34px] h-7 px-2 rounded-md text-white text-[12px] font-bold tabular tracking-wide"
+                      style={{ backgroundColor: r.route.color }}
+                    >
+                      {r.route.code}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14px] font-semibold text-text-primary truncate">
+                        {r.route.name}
+                      </div>
+                      <div className="text-[12px] text-text-secondary">
+                        {etaMin != null
+                          ? `Próximo en ~${etaMin} min`
+                          : 'Sin ETA disponible'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       <BottomSheet initial="half" collapsedHeight={148}>
         <div className="px-5 pb-8">
@@ -170,7 +223,7 @@ export default function MapaPage() {
 
             {!isLoading && sorted.length === 0 && (
               <div className="text-center text-sm text-text-secondary py-12">
-                Sin resultados para "{query}"
+                Sin paraderos cerca
               </div>
             )}
 
