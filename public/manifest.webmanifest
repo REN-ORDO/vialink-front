@@ -1,0 +1,22 @@
+{
+  "name": "Vialink",
+  "short_name": "Vialink",
+  "description": "Paradero virtual inteligente para Barranquilla",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1E5EFF",
+  "background_color": "#FFFFFF",
+  "categories": ["travel", "navigation", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
