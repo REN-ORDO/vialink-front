@@ -31,7 +31,15 @@ export default function AsistentePage() {
     setTyping(true);
     try {
       const reply = await mockAskAssistant(text);
-      setMessages((prev) => [...prev, reply]);
+      const message: ChatMessageT = {
+        id: reply.messageId ?? `m_${Date.now()}_a`,
+        role: 'assistant',
+        content: reply.answer,
+        suggestedAction: reply.suggested_action,
+        recommendation: reply.recommendation,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, message]);
     } finally {
       setTyping(false);
     }

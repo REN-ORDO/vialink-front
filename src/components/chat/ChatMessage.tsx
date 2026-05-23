@@ -1,5 +1,6 @@
 import { Sparkles } from 'lucide-react';
 import type { ChatMessage as ChatMessageT } from '../../types';
+import SuggestedActionCard from './SuggestedActionCard';
 import RouteRecommendationCard from './RouteRecommendationCard';
 
 type Props = { message: ChatMessageT };
@@ -26,9 +27,14 @@ export default function ChatMessage({ message }: Props) {
         <div className="bg-white border border-black/[0.05] rounded-[20px] rounded-tl-md px-4 py-2.5 text-[15px] leading-snug text-text-primary vl-elev-1">
           {message.content}
         </div>
-        {message.recommendation && (
+        {message.suggestedAction ? (
+          <SuggestedActionCard
+            action={message.suggestedAction}
+            recommendation={message.recommendation}
+          />
+        ) : message.recommendation ? (
           <RouteRecommendationCard recommendation={message.recommendation} />
-        )}
+        ) : null}
       </div>
     </div>
   );

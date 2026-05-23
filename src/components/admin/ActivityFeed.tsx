@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Sparkles,
   AlertTriangle,
+  LogIn,
 } from 'lucide-react';
 import type { AgentAction, AgentEvent } from '../../types';
 
@@ -12,6 +13,7 @@ const ACTION_LABEL: Record<AgentAction, string> = {
   started_trip: 'inició un viaje',
   completed_trip: 'completó un viaje',
   reported_incident: 'reportó incidente',
+  boarded: 'subió al bus',
 };
 
 const ACTION_ICON: Record<AgentAction, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
@@ -19,6 +21,7 @@ const ACTION_ICON: Record<AgentAction, React.ComponentType<{ className?: string;
   started_trip: Bus,
   completed_trip: CheckCircle2,
   reported_incident: AlertTriangle,
+  boarded: LogIn,
 };
 
 const ACTION_COLOR: Record<AgentAction, string> = {
@@ -26,6 +29,7 @@ const ACTION_COLOR: Record<AgentAction, string> = {
   started_trip: 'text-success bg-success/10',
   completed_trip: 'text-text-primary bg-black/5',
   reported_incident: 'text-accent bg-accent/10',
+  boarded: 'text-brand bg-brand/10',
 };
 
 const ACTION_BAR: Record<AgentAction, string> = {
@@ -33,6 +37,7 @@ const ACTION_BAR: Record<AgentAction, string> = {
   started_trip: 'bg-success',
   completed_trip: 'bg-white/40',
   reported_incident: 'bg-accent',
+  boarded: 'bg-brand',
 };
 
 function relativeTime(iso: string): string {

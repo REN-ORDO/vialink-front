@@ -1,5 +1,9 @@
 import { paraderosMock } from './mockData';
-import type { ChatMessage, RouteRecommendation } from '../types';
+import type {
+  AssistantAskResponse,
+  RouteRecommendation,
+  SuggestedAction,
+} from '../types';
 
 const SUGGESTIONS = [
   'Voy de afán al Centro, qué bus tomo?',
@@ -115,16 +119,29 @@ function buildText(kw: Keyword, rec?: RouteRecommendation): string {
   }
 }
 
-export async function mockAskAssistant(prompt: string): Promise<ChatMessage> {
+function buildSuggestedAction(
+  rec?: RouteRecommendation,
+): SuggestedAction | null {
+  if (!rec) return null;
+  return {
+    type: 'START_TRIP',
+    routeId: rec.rutaNombre,
+    routeCode: rec.rutaNombre,
+    destination: rec.destino,
+  };
+}
+
+export async function mockAskAssistant(
+  prompt: string,
+): Promise<AssistantAskResponse & { recommendation?: RouteRecommendation }> {
   const kw = detectKeyword(prompt);
   const rec = pickRecommendation(kw);
   const text = buildText(kw, rec);
   await new Promise((r) => setTimeout(r, 900 + Math.random() * 600));
   return {
-    id: `m_${Date.now()}_a`,
-    role: 'assistant',
-    content: text,
+    answer: text,
+    suggested_action: buildSuggestedAction(rec),
     recommendation: rec,
-    createdAt: new Date().toISOString(),
+    messageId: `m_${Date.now()}_a`,
   };
 }

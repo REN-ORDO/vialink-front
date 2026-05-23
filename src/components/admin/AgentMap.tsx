@@ -11,6 +11,7 @@ const ACTION_COLOR: Record<AgentAction, string> = {
   started_trip: '#00875A',
   completed_trip: '#0A0A0A',
   reported_incident: '#FF6B35',
+  boarded: '#1E5EFF',
 };
 
 const canvasRenderer = L.canvas({ padding: 0.5 });
