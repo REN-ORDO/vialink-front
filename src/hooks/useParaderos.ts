@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, USE_MOCKS } from '../lib/api';
 import { paraderosMock } from '../lib/mockData';
 import type { Paradero } from '../types';
 
 async function fetchParaderos(): Promise<Paradero[]> {
+  if (USE_MOCKS) return paraderosMock;
   try {
-    return await api<Paradero[]>('/paraderos');
+    return await api.get<Paradero[]>('/landmarks/nearby');
   } catch (err) {
     if (err instanceof ApiError || err instanceof TypeError) {
       return paraderosMock;
@@ -23,8 +24,13 @@ export function useParaderos() {
 }
 
 async function fetchParadero(id: string): Promise<Paradero> {
+  if (USE_MOCKS) {
+    const found = paraderosMock.find((p) => p.id === id);
+    if (!found) throw new Error(`Paradero ${id} no encontrado`);
+    return found;
+  }
   try {
-    return await api<Paradero>(`/paraderos/${id}`);
+    return await api.get<Paradero>(`/landmarks/${id}`);
   } catch (err) {
     if (err instanceof ApiError || err instanceof TypeError) {
       const found = paraderosMock.find((p) => p.id === id);
