@@ -97,6 +97,19 @@ export type AssistantAskResponse = {
   messageId?: string;
 };
 
+export type AlternativeRoute = {
+  rank: number;
+  label: string;
+  rutaNombre: string;
+  origen: string;
+  destino: string;
+  duracionMinutos: number;
+  paraderoOrigenId?: string;
+  insight?: string;
+  badge?: 'recomendada' | 'mas_rapida' | 'mas_segura' | 'ultimo_bus';
+  action: SuggestedAction;
+};
+
 export type IncidentType =
   | 'TRAFFIC'
   | 'FULL_BUS'
@@ -183,6 +196,7 @@ export type ChatMessage = {
   role: ChatRole;
   content: string;
   suggestedAction?: SuggestedAction | null;
+  alternatives?: AlternativeRoute[];
   recommendation?: RouteRecommendation;
   createdAt: string;
 };

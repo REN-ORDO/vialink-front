@@ -36,6 +36,7 @@ export default function AsistentePage() {
         role: 'assistant',
         content: reply.answer,
         suggestedAction: reply.suggested_action,
+        alternatives: reply.alternatives,
         recommendation: reply.recommendation,
         createdAt: new Date().toISOString(),
       };
