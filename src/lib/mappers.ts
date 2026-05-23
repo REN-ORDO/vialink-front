@@ -11,6 +11,7 @@ import type {
   Incident,
   User,
   ChatMessage,
+  GeocodeSuggestion,
 } from '../types';
 import type {
   BackendLandmarkDetail,
@@ -25,6 +26,7 @@ import type {
   BackendIncident,
   BackendMe,
   BackendAssistantMessage,
+  BackendGeocodeResult,
 } from '../types/backend';
 
 // ============================================================
@@ -263,5 +265,21 @@ export function backendMeToUser(m: BackendMe): User {
     city: m.city_code,
     tripsCount: m.trips_count,
     favoritesCount: m.favorites_count,
+  };
+}
+
+// ============================================================
+// Geocoding
+// ============================================================
+
+export function backendGeocodeResultToSuggestion(
+  r: BackendGeocodeResult,
+): GeocodeSuggestion {
+  return {
+    id: btoa(unescape(encodeURIComponent(r.formatted_address))).slice(0, 16),
+    label: r.formatted_address.split(',').slice(0, 2).join(',').trim(),
+    fullAddress: r.formatted_address,
+    location: r.location,
+    category: r.category,
   };
 }
