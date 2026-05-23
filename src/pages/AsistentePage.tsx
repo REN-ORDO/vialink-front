@@ -8,6 +8,7 @@ import { getSuggestions } from '../lib/llmMock';
 import { dataSource } from '../lib/dataSource';
 import { RateLimitError } from '../lib/api';
 import { useAppStore } from '../store/useAppStore';
+import { useAutoGuestAuth } from '../hooks/useAutoGuestAuth';
 import type { ChatMessage as ChatMessageT } from '../types';
 
 export default function AsistentePage() {
@@ -18,6 +19,9 @@ export default function AsistentePage() {
     userLat != null && userLng != null
       ? { lat: userLat, lng: userLng }
       : undefined;
+
+  const authStatus = useAutoGuestAuth();
+  const authReady = authStatus === 'ready';
 
   const [messages, setMessages] = useState<ChatMessageT[]>([]);
   const [typing, setTyping] = useState(false);
@@ -34,7 +38,7 @@ export default function AsistentePage() {
   }, [messages, typing]);
 
   async function send(text: string) {
-    if (isRateLimited) return;
+    if (isRateLimited || !authReady) return;
     const user: ChatMessageT = {
       id: `m_${Date.now()}_u`,
       role: 'user',
@@ -97,8 +101,18 @@ export default function AsistentePage() {
               <div className="text-[14.5px] font-bold text-text-primary leading-tight vl-headline">
                 Asistente Vialink
               </div>
-              <div className="vl-eyebrow text-success leading-tight mt-0.5">
-                Conectado
+              <div
+                className={`vl-eyebrow leading-tight mt-0.5 ${
+                  authReady ? 'text-success' : 'text-text-secondary'
+                }`}
+              >
+                {authReady
+                  ? 'Conectado'
+                  : authStatus === 'signing-up'
+                    ? 'Conectando…'
+                    : authStatus === 'error'
+                      ? 'Sin conexión'
+                      : 'Iniciando'}
               </div>
             </div>
           </div>
@@ -171,7 +185,7 @@ export default function AsistentePage() {
         {typing && <TypingIndicator />}
       </main>
 
-      <ChatInput onSend={send} disabled={typing || isRateLimited} />
+      <ChatInput onSend={send} disabled={typing || isRateLimited || !authReady} />
     </div>
   );
 }

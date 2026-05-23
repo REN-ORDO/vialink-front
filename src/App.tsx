@@ -3,8 +3,10 @@ import MapaPage from './pages/MapaPage';
 import ParaderoPage from './pages/ParaderoPage';
 import AsistentePage from './pages/AsistentePage';
 import ViajePage from './pages/ViajePage';
+import { useAutoGuestAuth } from './hooks/useAutoGuestAuth';
 
 export default function App() {
+  useAutoGuestAuth();
   return (
     <BrowserRouter>
       <Routes>
