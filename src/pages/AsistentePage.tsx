@@ -4,14 +4,27 @@ import { ChevronLeft, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ChatMessage, { TypingIndicator } from '../components/chat/ChatMessage';
 import ChatInput from '../components/chat/ChatInput';
-import { getSuggestions, mockAskAssistant } from '../lib/llmMock';
+import { getSuggestions } from '../lib/llmMock';
+import { dataSource } from '../lib/dataSource';
+import { RateLimitError } from '../lib/api';
+import { useAppStore } from '../store/useAppStore';
 import type { ChatMessage as ChatMessageT } from '../types';
 
 export default function AsistentePage() {
   const navigate = useNavigate();
+  const userLat = useAppStore((s) => s.userLat);
+  const userLng = useAppStore((s) => s.userLng);
+  const location =
+    userLat != null && userLng != null
+      ? { lat: userLat, lng: userLng }
+      : undefined;
+
   const [messages, setMessages] = useState<ChatMessageT[]>([]);
   const [typing, setTyping] = useState(false);
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number>(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const isRateLimited = Date.now() < rateLimitedUntil;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -21,6 +34,7 @@ export default function AsistentePage() {
   }, [messages, typing]);
 
   async function send(text: string) {
+    if (isRateLimited) return;
     const user: ChatMessageT = {
       id: `m_${Date.now()}_u`,
       role: 'user',
@@ -30,9 +44,9 @@ export default function AsistentePage() {
     setMessages((prev) => [...prev, user]);
     setTyping(true);
     try {
-      const reply = await mockAskAssistant(text);
+      const reply = await dataSource.askAssistant({ question: text, location });
       const message: ChatMessageT = {
-        id: reply.messageId ?? `m_${Date.now()}_a`,
+        id: `m_${Date.now()}_a`,
         role: 'assistant',
         content: reply.answer,
         suggestedAction: reply.suggested_action,
@@ -41,6 +55,20 @@ export default function AsistentePage() {
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, message]);
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        setRateLimitedUntil(Date.now() + err.retryAfterMs);
+      }
+      const errMsg: ChatMessageT = {
+        id: `m_${Date.now()}_err`,
+        role: 'assistant',
+        content:
+          err instanceof RateLimitError
+            ? `Espera unos segundos antes de preguntar de nuevo (${Math.round(err.retryAfterMs / 1000)}s).`
+            : 'No pude responderte ahora mismo. Intenta de nuevo en unos segundos.',
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errMsg]);
     } finally {
       setTyping(false);
     }
@@ -143,7 +171,7 @@ export default function AsistentePage() {
         {typing && <TypingIndicator />}
       </main>
 
-      <ChatInput onSend={send} disabled={typing} />
+      <ChatInput onSend={send} disabled={typing || isRateLimited} />
     </div>
   );
 }
