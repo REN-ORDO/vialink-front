@@ -18,8 +18,7 @@ function buildIcon(bus: Bus, lod: LOD): L.DivIcon {
   }
 
   const heading = bus.heading ?? 0;
-  const isArt = op.vehicleType === 'articulado';
-  const size = isArt ? 72 : 56;
+  const size = 56;
 
   return L.divIcon({
     className: 'vl-bus3d-marker',

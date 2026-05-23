@@ -11,15 +11,6 @@ export type OperatorConfig = {
 };
 
 export const OPERATORS: Record<OperatorId, OperatorConfig> = {
-  transmetro: {
-    id: 'transmetro',
-    displayName: 'Transmetro',
-    vehicleType: 'articulado',
-    bodyColor: '#1E3A8A',
-    accentColor: '#DA1E28',
-    dotBorder: '#FFFFFF',
-    iconSrc: '/assets/buses/transmetro.png',
-  },
   bus_azul_pto: {
     id: 'bus_azul_pto',
     displayName: 'Buseta Costeña',
@@ -41,5 +32,5 @@ export const OPERATORS: Record<OperatorId, OperatorConfig> = {
 };
 
 export function getOperator(id: OperatorId): OperatorConfig {
-  return OPERATORS[id] ?? OPERATORS.transmetro;
+  return OPERATORS[id] ?? OPERATORS.bus_azul_pto;
 }

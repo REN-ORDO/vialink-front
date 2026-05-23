@@ -32,9 +32,8 @@ import type {
 // ============================================================
 
 export function operatorFromRoute(r: BackendRoute): OperatorId {
-  if (r.mode === 'BRT' || r.code.startsWith('T')) return 'transmetro';
   const op = r.operator?.toLowerCase() ?? '';
-  if (op.includes('amarill') || op.includes('puerto')) return 'bus_amarillo_pto';
+  if (op.includes('amarill')) return 'bus_amarillo_pto';
   return 'bus_azul_pto';
 }
 

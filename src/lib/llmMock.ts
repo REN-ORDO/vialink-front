@@ -99,7 +99,7 @@ function demoLibreCentroResponse(): {
   );
 
   const alternativeAction: SuggestedAction = startTripAction(
-    'Transmetro · R3',
+    'Buseta Amarilla Puerto',
     'Universidad Libre · Sede Centro',
   );
 
@@ -127,14 +127,14 @@ function demoLibreCentroResponse(): {
     },
     {
       rank: 2,
-      label: 'Más rápida con trasbordo',
-      rutaNombre: 'Bus Azul + Transmetro',
+      label: 'La buseta amarilla, más directa',
+      rutaNombre: 'Buseta Amarilla Puerto',
       origen: 'Puerto Colombia',
       destino: 'Centro Histórico',
       duracionMinutos: 22,
       paraderoOrigenId: 'p4',
       insight:
-        'Bus azul hasta la Cl. 76, trasbordo a Transmetro en Joe Arroyo, alimentador al Centro. Más corta pero requiere conocer la estación.',
+        'Pasa cada 15 min por la misma esquina del azul. Va más directa al Centro pero no la has tomado antes, pregunta al conductor por la Cl. 37.',
       badge: 'mas_rapida',
       action: alternativeAction,
     },
@@ -145,7 +145,7 @@ function demoLibreCentroResponse(): {
     '',
     '1. La opción que ya conoces. Bus azul Puerto que sale de tu casa, te bajas una esquina antes del Paseo Bolívar (Cra. 43 con Cl. 38) y caminas 3 minutos hacia la Cl. 37. Tarda unos 28 minutos. Es la más segura si nunca has ido.',
     '',
-    '2. La opción rápida. Bus azul hasta la Cl. 76, te bajas y tomas Transmetro hacia Joe Arroyo, después un alimentador hacia el Centro. Tarda 22 minutos pero requiere un trasbordo y conocer la estación.',
+    '2. La buseta amarilla de Puerto, más directa. Pasa por la misma parada que el azul cada 15 minutos y te deja a una esquina del Paseo Bolívar. Tarda 22 minutos pero como no la has tomado, pregúntale al conductor por la Cl. 37.',
     '',
     'Como es tu primera vez por allá, te recomiendo la opción 1.',
   ].join('\n');

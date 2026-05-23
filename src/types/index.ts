@@ -36,9 +36,9 @@ export type Landmark = {
   routesNearby: LandmarkRouteRef[];
 };
 
-export type OperatorId = 'transmetro' | 'bus_azul_pto' | 'bus_amarillo_pto';
+export type OperatorId = 'bus_azul_pto' | 'bus_amarillo_pto';
 
-export type VehicleType = 'articulado' | 'padron';
+export type VehicleType = 'padron';
 
 export type Bus = {
   id: string;

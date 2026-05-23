@@ -63,9 +63,9 @@ export const paraderosMock: Paradero[] = [
 ];
 
 export const busesMock: Bus[] = [
-  { id: 'b1', rutaNombre: 'C12', lat: 10.972, lng: -74.795, heading: 45, operatorId: 'transmetro' },
+  { id: 'b1', rutaNombre: 'C12', lat: 10.972, lng: -74.795, heading: 45, operatorId: 'bus_azul_pto' },
   { id: 'b2', rutaNombre: 'A8', lat: 10.991, lng: -74.802, heading: 180, operatorId: 'bus_azul_pto' },
-  { id: 'b3', rutaNombre: 'T1', lat: 10.963, lng: -74.781, heading: 270, operatorId: 'transmetro' },
+  { id: 'b3', rutaNombre: 'T1', lat: 10.963, lng: -74.781, heading: 270, operatorId: 'bus_amarillo_pto' },
   { id: 'b4', rutaNombre: 'B1', lat: 10.978, lng: -74.788, heading: 90, operatorId: 'bus_amarillo_pto' },
   { id: 'b5', rutaNombre: '46', lat: 10.955, lng: -74.776, heading: 0, operatorId: 'bus_azul_pto' },
 ];
