@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight,
   Plus,
@@ -10,6 +10,7 @@ import {
   Sparkles,
   Clock,
   Bus,
+  Radar,
 } from 'lucide-react';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 
@@ -152,7 +153,32 @@ function StatCell({ value, label }: { value: string; label: string }) {
   );
 }
 
+function toneForEta(eta: number): 'success' | 'brand' | 'warning' {
+  if (eta <= 5) return 'success';
+  if (eta <= 15) return 'brand';
+  return 'warning';
+}
+
+const COLOR_MAP = {
+  success: 'text-success',
+  brand: 'text-brand',
+  warning: 'text-warning',
+} as const;
+
 function LiveParaderoPreview() {
+  const [etas, setEtas] = useState({ c12: 3, a8: 9, r46: 22 });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setEtas((prev) => ({
+        c12: prev.c12 <= 1 ? 5 : prev.c12 - 1,
+        a8: prev.a8 <= 1 ? 11 : prev.a8 - 1,
+        r46: prev.r46 <= 1 ? 24 : prev.r46 - 1,
+      }));
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="rounded-[18px] bg-white border border-black/[0.05] overflow-hidden vl-elev-1">
       <div className="px-4 pt-3.5 pb-3 flex items-center justify-between">
@@ -170,9 +196,9 @@ function LiveParaderoPreview() {
           <span className="pl-1.5">Live</span>
         </div>
       </div>
-      <RouteLine eta="3" rutaNombre="C12" destino="Centro Histórico" tone="success" />
-      <RouteLine eta="9" rutaNombre="A8" destino="Universidad del Norte" tone="brand" />
-      <RouteLine eta="22" rutaNombre="46" destino="Soledad" tone="warning" />
+      <RouteLine eta={etas.c12} rutaNombre="C12" destino="Centro Histórico" />
+      <RouteLine eta={etas.a8} rutaNombre="A8" destino="Universidad del Norte" />
+      <RouteLine eta={etas.r46} rutaNombre="46" destino="Soledad" />
     </div>
   );
 }
@@ -181,25 +207,28 @@ function RouteLine({
   eta,
   rutaNombre,
   destino,
-  tone,
 }: {
-  eta: string;
+  eta: number;
   rutaNombre: string;
   destino: string;
-  tone: 'success' | 'brand' | 'warning';
 }) {
-  const colorMap = {
-    success: 'text-success',
-    brand: 'text-brand',
-    warning: 'text-warning',
-  } as const;
+  const tone = toneForEta(eta);
   return (
     <div className="border-t border-black/[0.05] px-4 py-3 flex items-center gap-3.5">
       <div className="shrink-0 flex flex-col items-center w-10">
-        <div
-          className={`text-[22px] font-bold tabular leading-none vl-display ${colorMap[tone]}`}
-        >
-          {eta}
+        <div className={`relative h-[24px] overflow-hidden`}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={eta}
+              initial={{ y: 18, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -18, opacity: 0 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              className={`text-[22px] font-bold tabular leading-none vl-display ${COLOR_MAP[tone]}`}
+            >
+              {eta}
+            </motion.div>
+          </AnimatePresence>
         </div>
         <div className="text-[9.5px] font-semibold text-text-secondary mt-0.5 tracking-wide">
           MIN
@@ -458,7 +487,7 @@ export default function OnboardingPage() {
           <motion.div
             variants={fadeUp}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="mx-5 mb-8 rounded-[18px] border border-black/[0.05] p-4 flex items-center gap-3 vl-elev-1"
+            className="mx-5 mb-6 rounded-[18px] border border-black/[0.05] p-4 flex items-center gap-3 vl-elev-1"
           >
             <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5 text-accent" strokeWidth={2.4} />
@@ -472,6 +501,20 @@ export default function OnboardingPage() {
               </div>
             </div>
             <Bus className="w-5 h-5 text-text-secondary/40 shrink-0" />
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            className="px-6 mb-8"
+          >
+            <div className="vl-eyebrow text-text-secondary">Bajo el capó</div>
+            <div className="mt-1.5 text-[40px] leading-[0.98] font-bold text-text-primary vl-display tabular">
+              1.2k<span className="text-brand">.</span>
+            </div>
+            <div className="text-[13.5px] text-text-secondary mt-1.5 leading-snug max-w-[300px]">
+              Decisiones de ruta procesadas por minuto en Vialink. Cada bus, cada paradero, cada IA respondiendo en vivo.
+            </div>
           </motion.div>
         </motion.div>
       </div>
@@ -490,12 +533,27 @@ export default function OnboardingPage() {
           <ArrowUpRight className="w-[18px] h-[18px]" strokeWidth={2.6} />
         </button>
 
+        <button
+          onClick={() => {
+            markOnboarded();
+            navigate('/admin');
+          }}
+          className="cursor-pointer w-full h-12 mt-2.5 rounded-full bg-text-primary text-white text-[14.5px] font-semibold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+        >
+          <Radar className="w-[15px] h-[15px] text-brand" strokeWidth={2.6} />
+          Ver simulador en vivo
+          <span className="ml-1 inline-flex items-center gap-1 text-[10.5px] font-bold text-success vl-eyebrow">
+            <span className="vl-status-dot text-success" />
+            <span className="pl-1.5">500</span>
+          </span>
+        </button>
+
         {showInstallButton && (
           <button
             onClick={install}
-            className="cursor-pointer w-full h-12 mt-2.5 rounded-full text-text-primary text-[14.5px] font-semibold flex items-center justify-center gap-2 active:bg-surface-raised transition-colors"
+            className="cursor-pointer w-full h-11 mt-2 rounded-full text-text-secondary text-[13.5px] font-semibold flex items-center justify-center gap-2 active:bg-surface-raised transition-colors"
           >
-            <Download className="w-[15px] h-[15px] text-brand" strokeWidth={2.6} />
+            <Download className="w-[14px] h-[14px] text-brand" strokeWidth={2.6} />
             {installLabel}
           </button>
         )}
