@@ -146,6 +146,30 @@ export interface BackendBusesAtPointResponse {
   routes: BackendBusesAtPointRoute[];
 }
 
+// ===== Geocode =====
+export type BackendGeocodeCategory =
+  | 'address'
+  | 'street'
+  | 'place'
+  | 'poi'
+  | 'neighborhood'
+  | 'locality';
+
+export interface BackendGeocodeResult {
+  formatted_address: string;
+  location: { lat: number; lng: number };
+  category: BackendGeocodeCategory | null;
+  relevance: number;
+  source: 'mapbox' | 'cache';
+}
+
+export interface BackendGeocodeResponse {
+  query: string;
+  results: BackendGeocodeResult[];
+  cached: boolean;
+  latency_ms: number;
+}
+
 // ===== Auth =====
 export interface BackendAuthSession {
   access_token: string;
