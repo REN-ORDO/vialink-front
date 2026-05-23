@@ -12,14 +12,33 @@ export function getSuggestions(): string[] {
   return SUGGESTIONS;
 }
 
-type Keyword = 'centro' | 'uninorte' | 'aeropuerto' | 'soledad' | 'norte' | 'generic';
+type Keyword =
+  | 'centro'
+  | 'uninorte'
+  | 'aeropuerto'
+  | 'soledad'
+  | 'norte'
+  | 'universidad'
+  | 'hospital'
+  | 'mall'
+  | 'oficina'
+  | 'casa_noche'
+  | 'generic';
 
 function detectKeyword(text: string): Keyword {
   const t = text.toLowerCase();
-  if (/(centro|paseo|bol[ií]var)/.test(t)) return 'centro';
-  if (/(uninorte|universidad|del norte)/.test(t)) return 'uninorte';
-  if (/(aero|aeropuerto|vuelo)/.test(t)) return 'aeropuerto';
+  if (/(uninorte|del norte)/.test(t)) return 'uninorte';
+  if (/(universidad|libre|simon bol[ií]var|autonoma|metropolitana|atl[áa]ntico)/.test(t))
+    return 'universidad';
+  if (/(centro|paseo|bol[ií]var hist)/.test(t)) return 'centro';
+  if (/(aero|aeropuerto|vuelo|cortissoz)/.test(t)) return 'aeropuerto';
   if (/soledad/.test(t)) return 'soledad';
+  if (/(hospital|clinic|cl[ií]nica|urgencia|emergencia)/.test(t)) return 'hospital';
+  if (/(mall|buenavista|centro comercial|portal del prado|caribe plaza|viva)/.test(t))
+    return 'mall';
+  if (/(oficina|trabajo|chamba|of?ic)/.test(t)) return 'oficina';
+  if (/(casa|hogar|llegar a mi|en la noche|tarde|9 ?pm|10 ?pm|tarde noche)/.test(t))
+    return 'casa_noche';
   if (/norte/.test(t)) return 'norte';
   return 'generic';
 }
@@ -45,6 +64,7 @@ function pickRecommendation(kw: Keyword): RouteRecommendation | undefined {
     case 'centro':
       return find('C12');
     case 'uninorte':
+    case 'universidad':
       return find('A8');
     case 'aeropuerto':
       return find('L9');
@@ -52,6 +72,14 @@ function pickRecommendation(kw: Keyword): RouteRecommendation | undefined {
       return find('T1');
     case 'norte':
       return find('B1');
+    case 'hospital':
+      return find('R3') ?? find('B1');
+    case 'mall':
+      return find('R3') ?? find('A8');
+    case 'oficina':
+      return find('B1') ?? find('C12');
+    case 'casa_noche':
+      return find('L9') ?? find('T1');
     default:
       return find('C12');
   }
@@ -59,19 +87,29 @@ function pickRecommendation(kw: Keyword): RouteRecommendation | undefined {
 
 function buildText(kw: Keyword, rec?: RouteRecommendation): string {
   if (!rec) {
-    return 'No tengo una ruta clara para eso ahora. ¿Puedes darme más detalle del destino?';
+    return 'No encontré una ruta exacta para eso. Si me das un destino concreto (Centro, Uninorte, aeropuerto, hospital...) te armo la mejor opción.';
   }
   switch (kw) {
     case 'centro':
       return `La ruta ${rec.rutaNombre} desde ${rec.origen} te deja en el Centro Histórico en unos ${rec.duracionMinutos} minutos. Es la opción más directa a esta hora.`;
     case 'uninorte':
       return `Toma la ${rec.rutaNombre} desde ${rec.origen}. Tarda ~${rec.duracionMinutos} min y para frente a la entrada principal de Uninorte.`;
+    case 'universidad':
+      return `Te conviene la ${rec.rutaNombre} desde ${rec.origen}. Pasa por varios campus universitarios de la zona norte, ~${rec.duracionMinutos} min de viaje.`;
     case 'aeropuerto':
-      return `La ${rec.rutaNombre} sigue operando hasta el aeropuerto, pero es el último bus de la noche. Salida estimada del paradero ${rec.origen} en pocos minutos.`;
+      return `La ${rec.rutaNombre} sigue operando hasta el Cortissoz, pero es el último bus de la noche. Salida estimada del paradero ${rec.origen} en pocos minutos. No esperes el siguiente.`;
     case 'soledad':
-      return `La troncal ${rec.rutaNombre} desde ${rec.origen} es la más rápida hacia Soledad. Llegas en ~${rec.duracionMinutos} min.`;
+      return `La troncal ${rec.rutaNombre} desde ${rec.origen} es la más rápida hacia Soledad. Llegas en ~${rec.duracionMinutos} min sin trasbordos.`;
     case 'norte':
-      return `Para ir al norte te conviene la ${rec.rutaNombre} desde ${rec.origen}. Frecuencia estable, ~${rec.duracionMinutos} min de viaje.`;
+      return `Para ir al norte te conviene la ${rec.rutaNombre} desde ${rec.origen}. Frecuencia estable cada 8 min, ~${rec.duracionMinutos} min de viaje.`;
+    case 'hospital':
+      return `Para llegar a la zona de clínicas más rápido, toma la ${rec.rutaNombre} desde ${rec.origen}. ~${rec.duracionMinutos} min. Si es urgencia, considera un taxi.`;
+    case 'mall':
+      return `La ${rec.rutaNombre} desde ${rec.origen} te deja cerca del centro comercial en ~${rec.duracionMinutos} min. Frecuencia alta en horas pico.`;
+    case 'oficina':
+      return `A esta hora la ${rec.rutaNombre} desde ${rec.origen} es la más confiable hacia zona empresarial, ~${rec.duracionMinutos} min y sin trasbordos.`;
+    case 'casa_noche':
+      return `Después de las 9 pm las frecuencias bajan. La ${rec.rutaNombre} desde ${rec.origen} todavía pasa cada 15 min, ~${rec.duracionMinutos} min de viaje. Te aviso si es el último.`;
     default:
       return `Una opción razonable: ${rec.rutaNombre} desde ${rec.origen} hacia ${rec.destino}, ~${rec.duracionMinutos} min.`;
   }
