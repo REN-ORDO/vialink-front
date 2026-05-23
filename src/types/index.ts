@@ -17,12 +17,17 @@ export type Paradero = {
   rutas: Ruta[];
 };
 
+export type OperatorId = 'transmetro' | 'bus_azul_pto' | 'bus_amarillo_pto';
+
+export type VehicleType = 'articulado' | 'padron';
+
 export type Bus = {
   id: string;
   rutaNombre: string;
   lat: number;
   lng: number;
-  heading?: number;
+  heading: number;
+  operatorId: OperatorId;
 };
 
 export type AgentAction =

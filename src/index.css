@@ -3,10 +3,27 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --vl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --vl-ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+    --vl-elev-1: 0 1px 2px rgba(10, 10, 10, 0.04), 0 0 0 0.5px rgba(10, 10, 10, 0.05);
+    --vl-elev-2: 0 4px 12px -2px rgba(10, 10, 10, 0.06), 0 1px 2px rgba(10, 10, 10, 0.05);
+    --vl-elev-3: 0 12px 28px -8px rgba(10, 10, 10, 0.12), 0 2px 6px rgba(10, 10, 10, 0.04);
+    --vl-elev-brand: 0 10px 26px -6px rgba(30, 94, 255, 0.42);
+  }
+
   html,
   body,
   #root {
     height: 100%;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-x: none;
   }
 
   body {
@@ -14,11 +31,216 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    font-feature-settings: 'ss01', 'cv11', 'cv02', 'cv09';
+    overscroll-behavior-x: none;
   }
 
   #root {
     min-height: 100svh;
     display: flex;
     flex-direction: column;
+    overflow-x: clip;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .vl-paradero-dot {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: #ffffff;
+    border: 3px solid #1e5eff;
+    box-shadow: 0 2px 6px rgba(10, 10, 10, 0.18), 0 0 0 1px rgba(30, 94, 255, 0.08);
+  }
+
+  .vl-bus-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 9999px;
+    background: #1e5eff;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    box-shadow: 0 4px 10px -2px rgba(30, 94, 255, 0.5), 0 0 0 1px rgba(30, 94, 255, 0.5);
+    white-space: nowrap;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .vl-bus-marker,
+  .vl-paradero-marker,
+  .vl-bus-active-marker,
+  .vl-bus3d-marker,
+  .vl-bus3d-dot-marker {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .vl-bus3d {
+    position: relative;
+    width: 60px;
+    height: 72px;
+    pointer-events: auto;
+  }
+
+  .vl-bus3d-shadow {
+    position: absolute;
+    left: 50%;
+    top: 70%;
+    width: 34px;
+    height: 12px;
+    margin: -6px 0 0 -17px;
+    border-radius: 9999px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0) 70%);
+    filter: blur(2px);
+    pointer-events: none;
+  }
+
+  .vl-bus3d-body {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+
+  .vl-bus3d-dot {
+    display: block;
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(10, 10, 10, 0.35), 0 0 0 1px rgba(10, 10, 10, 0.18);
+  }
+
+  .vl-bus-active-marker {
+    position: relative;
+  }
+
+  .vl-bus-pill--active {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 6px 16px rgba(30, 94, 255, 0.6), 0 0 0 2px #fff;
+    z-index: 2;
+  }
+
+  .vl-bus-active-halo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 28px;
+    height: 28px;
+    margin-left: -14px;
+    margin-top: -14px;
+    border-radius: 9999px;
+    background: rgba(30, 94, 255, 0.28);
+    animation: vlPulse 2s ease-out infinite;
+  }
+
+  .vl-bus-active-halo--2 {
+    animation-delay: 1s;
+  }
+
+  @keyframes vlPulse {
+    0%   { transform: scale(1);   opacity: 0.65; }
+    80%  { transform: scale(2.4); opacity: 0;    }
+    100% { transform: scale(2.4); opacity: 0;    }
+  }
+
+  .vl-shimmer {
+    background: linear-gradient(
+      90deg,
+      #F2F4F7 0%,
+      #FAFBFC 40%,
+      #F2F4F7 80%
+    );
+    background-size: 200% 100%;
+    animation: vlShimmer 1.4s linear infinite;
+  }
+
+  @keyframes vlShimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  .vl-status-dot {
+    position: relative;
+    display: inline-flex;
+    width: 8px;
+    height: 8px;
+  }
+
+  .vl-status-dot::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0.45;
+    animation: vlPing 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  .vl-status-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: currentColor;
+  }
+
+  @keyframes vlPing {
+    75%, 100% {
+      transform: scale(2.4);
+      opacity: 0;
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums slashed-zero;
+  }
+
+  .vl-elev-1 { box-shadow: var(--vl-elev-1); }
+  .vl-elev-2 { box-shadow: var(--vl-elev-2); }
+  .vl-elev-3 { box-shadow: var(--vl-elev-3); }
+  .vl-elev-brand { box-shadow: var(--vl-elev-brand); }
+
+  .vl-display {
+    letter-spacing: -0.035em;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  .vl-headline {
+    letter-spacing: -0.022em;
+  }
+
+  .vl-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 }
