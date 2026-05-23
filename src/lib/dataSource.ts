@@ -12,6 +12,7 @@ import {
   backendAssistantAskToFrontend,
   backendMeToUser,
   backendAssistantMessageToChatMessage,
+  backendGeocodeResultToSuggestion,
 } from './mappers';
 import type {
   AlternativeRoute,
@@ -19,6 +20,7 @@ import type {
   AuthTokens,
   Bus,
   ChatMessage,
+  GeocodeSuggestion,
   Incident,
   LatLng,
   Paradero,
@@ -38,6 +40,7 @@ import type {
   BackendBusesAtPointResponse,
   BackendCorridorGeoJSON,
   BackendFavoritesResponse,
+  BackendGeocodeResponse,
   BackendIncidentsNearbyResponse,
   BackendLandmarkDetail,
   BackendLandmarkNearbyResponse,
@@ -176,6 +179,50 @@ export const dataSource = {
       `/routes/nearby?lat=${location.lat}&lng=${location.lng}&radius_m=${radiusM}`,
     );
     return raw.routes;
+  },
+
+  // ============================================================
+  // DISCOVERY · Geocoding (free-text address search)
+  // ============================================================
+  async geocode(
+    query: string,
+    proximity?: LatLng,
+    limit = 5,
+  ): Promise<GeocodeSuggestion[]> {
+    if (USE_MOCKS) {
+      const q = query.toLowerCase();
+      return paraderosMock
+        .filter(
+          (p) =>
+            p.nombre.toLowerCase().includes(q) ||
+            p.direccion.toLowerCase().includes(q),
+        )
+        .slice(0, limit)
+        .map((p) => ({
+          id: p.id,
+          label: p.nombre,
+          fullAddress: p.direccion,
+          location: { lat: p.lat, lng: p.lng },
+          category: 'place' as const,
+        }));
+    }
+    const params = new URLSearchParams({ q: query, limit: String(limit) });
+    if (proximity) {
+      params.set('lat', proximity.lat.toString());
+      params.set('lng', proximity.lng.toString());
+    }
+    try {
+      const raw = await api.get<BackendGeocodeResponse>(
+        `/geocode?${params.toString()}`,
+      );
+      return raw.results.map(backendGeocodeResultToSuggestion);
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 503 || err.status === 502)) {
+        console.warn('Geocoding no disponible:', err.message);
+        return [];
+      }
+      throw err;
+    }
   },
 
   // ============================================================
