@@ -3,16 +3,17 @@ import { ChevronLeft, Bot } from 'lucide-react';
 import AgentMap from '../components/admin/AgentMap';
 import ActivityFeed from '../components/admin/ActivityFeed';
 import MetricCard from '../components/admin/MetricCard';
+import InsightRotator from '../components/admin/InsightRotator';
 import { useSimulator } from '../hooks/useSimulator';
 
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { agents, feed, metrics } = useSimulator();
+  const { agents, feed, ripples, metrics, insights } = useSimulator();
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row bg-text-primary min-h-0 overflow-hidden">
       <div className="relative flex-1 min-h-[55vh] lg:min-h-0">
-        <AgentMap agents={agents} />
+        <AgentMap agents={agents} ripples={ripples} />
 
         <header className="absolute top-0 left-0 right-0 z-30 px-4 pt-[max(14px,env(safe-area-inset-top))] pb-2 flex items-center gap-3">
           <button
@@ -20,21 +21,18 @@ export default function AdminPage() {
             aria-label="Volver"
             className="cursor-pointer w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center active:bg-white/15 transition-colors"
           >
-            <ChevronLeft className="w-5 h-5 text-white" />
+            <ChevronLeft className="w-5 h-5 text-white" strokeWidth={2.4} />
           </button>
           <div className="flex-1 inline-flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/10 rounded-full px-3.5 h-10">
             <div className="w-6 h-6 rounded-full bg-brand flex items-center justify-center">
               <Bot className="w-3.5 h-3.5 text-white" strokeWidth={2.4} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-white truncate tracking-tight">
+              <div className="text-[13px] font-bold text-white truncate tracking-tight vl-headline">
                 Simulador · 500 agentes IA
               </div>
             </div>
-            <span className="relative flex w-2 h-2 mr-1">
-              <span className="absolute inset-0 rounded-full bg-success/60 animate-ping" />
-              <span className="relative w-2 h-2 rounded-full bg-success" />
-            </span>
+            <span className="vl-status-dot text-success" />
           </div>
         </header>
 
@@ -52,12 +50,24 @@ export default function AdminPage() {
       </div>
 
       <aside className="w-full lg:w-[400px] flex-1 lg:flex-none flex flex-col bg-text-primary border-t lg:border-t-0 lg:border-l border-white/[0.06] min-h-0">
-        <div className="px-4 pt-4 pb-3 grid grid-cols-3 gap-2">
-          <MetricCard label="Usuarios activos" value={metrics.activeUsers} />
-          <MetricCard label="Viajes en curso" value={metrics.activeTrips} />
+        <div className="px-4 pt-4">
+          <InsightRotator insights={insights} />
+        </div>
+        <div className="px-4 pt-3 pb-3 grid grid-cols-3 gap-2">
+          <MetricCard
+            label="Activos"
+            value={metrics.activeUsers.value}
+            delta={metrics.activeUsers.delta1m}
+          />
+          <MetricCard
+            label="Viajes curso"
+            value={metrics.activeTrips.value}
+            delta={metrics.activeTrips.delta1m}
+          />
           <MetricCard
             label="IA / min"
-            value={metrics.aiPerMinute}
+            value={metrics.aiPerMinute.value}
+            delta={metrics.aiPerMinute.delta1m}
             format={(n) => n.toString()}
           />
         </div>
