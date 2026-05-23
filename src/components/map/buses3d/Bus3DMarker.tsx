@@ -4,7 +4,6 @@ import L from 'leaflet';
 import type { Bus } from '../../../types';
 import { getOperator } from '../../../config/operators';
 import { zoomToLOD, type LOD } from '../../../lib/lod/zoomToLOD';
-import { busIsoSVG } from './BusIsoSVG';
 
 function buildIcon(bus: Bus, lod: LOD): L.DivIcon {
   const op = getOperator(bus.operatorId);
@@ -18,21 +17,24 @@ function buildIcon(bus: Bus, lod: LOD): L.DivIcon {
     });
   }
 
-  const svg = busIsoSVG(op);
   const heading = bus.heading ?? 0;
+  const isArt = op.vehicleType === 'articulado';
+  const size = isArt ? 72 : 56;
 
   return L.divIcon({
     className: 'vl-bus3d-marker',
     html: `
-      <div class="vl-bus3d">
-        <div class="vl-bus3d-shadow"></div>
-        <div class="vl-bus3d-body" style="transform: perspective(220px) rotateX(58deg) rotateZ(${heading}deg);">
-          ${svg}
-        </div>
+      <div class="vl-bus3d-wrap" style="width:${size}px;height:${size}px;">
+        <img
+          src="${op.iconSrc}"
+          alt=""
+          class="vl-bus3d-img"
+          style="transform: rotate(${heading}deg);"
+        />
       </div>
     `,
-    iconSize: [60, 72],
-    iconAnchor: [30, 36],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
 }
 

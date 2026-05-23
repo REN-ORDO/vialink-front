@@ -6,8 +6,8 @@ export type OperatorConfig = {
   vehicleType: VehicleType;
   bodyColor: string;
   accentColor: string;
-  windowColor: string;
   dotBorder: string;
+  iconSrc: string;
 };
 
 export const OPERATORS: Record<OperatorId, OperatorConfig> = {
@@ -15,28 +15,28 @@ export const OPERATORS: Record<OperatorId, OperatorConfig> = {
     id: 'transmetro',
     displayName: 'Transmetro',
     vehicleType: 'articulado',
-    bodyColor: '#FFFFFF',
+    bodyColor: '#1E3A8A',
     accentColor: '#DA1E28',
-    windowColor: '#1E5EFF',
-    dotBorder: '#DA1E28',
+    dotBorder: '#FFFFFF',
+    iconSrc: '/assets/buses/transmetro.png',
   },
   bus_azul_pto: {
     id: 'bus_azul_pto',
-    displayName: 'Bus Azul Puerto',
+    displayName: 'Buseta Costeña',
     vehicleType: 'padron',
-    bodyColor: '#1E5EFF',
-    accentColor: '#FFFFFF',
-    windowColor: '#0A2A6B',
+    bodyColor: '#DA1E28',
+    accentColor: '#1E5EFF',
     dotBorder: '#FFFFFF',
+    iconSrc: '/assets/buses/bus_azul_pto.png',
   },
   bus_amarillo_pto: {
     id: 'bus_amarillo_pto',
-    displayName: 'Bus Amarillo Puerto',
+    displayName: 'Buseta Amarilla',
     vehicleType: 'padron',
     bodyColor: '#FACC15',
     accentColor: '#0A0A0A',
-    windowColor: '#3D2E00',
     dotBorder: '#0A0A0A',
+    iconSrc: '/assets/buses/bus_amarillo_pto.png',
   },
 };
 

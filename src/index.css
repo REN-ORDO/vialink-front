@@ -86,34 +86,23 @@
     border: none !important;
   }
 
-  .vl-bus3d {
+  .vl-bus3d-wrap {
     position: relative;
-    width: 60px;
-    height: 72px;
-    pointer-events: auto;
-  }
-
-  .vl-bus3d-shadow {
-    position: absolute;
-    left: 50%;
-    top: 70%;
-    width: 34px;
-    height: 12px;
-    margin: -6px 0 0 -17px;
-    border-radius: 9999px;
-    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0) 70%);
-    filter: blur(2px);
-    pointer-events: none;
-  }
-
-  .vl-bus3d-body {
-    position: absolute;
-    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: auto;
+  }
+
+  .vl-bus3d-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
     transform-origin: 50% 50%;
     will-change: transform;
+    user-select: none;
+    -webkit-user-drag: none;
   }
 
   .vl-bus3d-dot {
