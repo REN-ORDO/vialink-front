@@ -152,17 +152,6 @@ function StatCell({ value, label }: { value: string; label: string }) {
   );
 }
 
-const ROUTES_PREVIEW = [
-  { name: 'C12', dest: 'Centro' },
-  { name: 'A8', dest: 'Uninorte' },
-  { name: 'T1', dest: 'Soledad' },
-  { name: 'B1', dest: 'Norte' },
-  { name: '46', dest: 'Sur' },
-  { name: 'L9', dest: 'Aeropuerto' },
-  { name: 'F2', dest: 'Malambo' },
-  { name: 'R3', dest: 'Buenavista' },
-];
-
 function LiveParaderoPreview() {
   return (
     <div className="rounded-[18px] bg-white border border-black/[0.05] overflow-hidden vl-elev-1">
@@ -256,26 +245,6 @@ function AssistantTeaser() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function RoutesStrip() {
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      {ROUTES_PREVIEW.map((r) => (
-        <div
-          key={r.name}
-          className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white border border-black/[0.05] vl-elev-1 min-w-0"
-        >
-          <span className="inline-flex items-center justify-center min-w-[38px] h-6 px-2 rounded-full bg-text-primary text-white text-[11px] font-bold tabular tracking-wide shrink-0">
-            {r.name}
-          </span>
-          <span className="text-[12.5px] font-semibold text-text-primary vl-headline truncate">
-            {r.dest}
-          </span>
-        </div>
-      ))}
     </div>
   );
 }
@@ -484,15 +453,6 @@ export default function OnboardingPage() {
           >
             <SectionLabel>Pregúntale en lenguaje natural</SectionLabel>
             <AssistantTeaser />
-          </motion.div>
-
-          <motion.div
-            variants={fadeUp}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="px-5 mb-7"
-          >
-            <SectionLabel>Cubre toda la ciudad</SectionLabel>
-            <RoutesStrip />
           </motion.div>
 
           <motion.div
