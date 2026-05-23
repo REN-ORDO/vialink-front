@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Sparkles, Navigation2 } from 'lucide-react';
+import { Search, Sparkles, Navigation2, LocateFixed } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MapView from '../components/map/MapView';
 import ParaderoMarker from '../components/map/ParaderoMarker';
 import Bus3DMarker from '../components/map/buses3d/Bus3DMarker';
+import UserLocationMarker, {
+  FollowUser,
+  DisableFollowOnDrag,
+} from '../components/map/UserLocationMarker';
 import BottomSheet from '../components/ui/BottomSheet';
 import { busesMock, BARRANQUILLA_CENTER } from '../lib/mockData';
 import { useParaderos } from '../hooks/useParaderos';
 import { useLocation, distanceKm } from '../hooks/useLocation';
+import { useAppStore } from '../store/useAppStore';
 import type { Bus, Paradero } from '../types';
 
 function tickBuses(buses: Bus[]): Bus[] {
@@ -51,7 +56,12 @@ export default function MapaPage() {
   const [buses, setBuses] = useState<Bus[]>(busesMock);
   const [query, setQuery] = useState('');
   const { data: paraderos, isLoading } = useParaderos();
-  const { lat, lng } = useLocation();
+  const { lat, lng, status: locStatus } = useLocation();
+  const userHeading = useAppStore((s) => s.userHeading);
+  const followUser = useAppStore((s) => s.followUser);
+  const setFollowUser = useAppStore((s) => s.setFollowUser);
+  const hasUserLocation =
+    lat != null && lng != null && (locStatus === 'granted' || locStatus === 'idle');
 
   useEffect(() => {
     const id = setInterval(() => setBuses((prev) => tickBuses(prev)), 1800);
@@ -92,6 +102,13 @@ export default function MapaPage() {
         {buses.map((b) => (
           <Bus3DMarker key={b.id} bus={b} />
         ))}
+        <DisableFollowOnDrag onUserDrag={() => setFollowUser(false)} />
+        {hasUserLocation && lat != null && lng != null && (
+          <>
+            <UserLocationMarker lat={lat} lng={lng} heading={userHeading} />
+            <FollowUser lat={lat} lng={lng} enabled={followUser} />
+          </>
+        )}
       </MapView>
 
       <div className="absolute top-0 left-0 right-0 z-30 pt-[max(12px,env(safe-area-inset-top))]">
@@ -203,14 +220,32 @@ export default function MapaPage() {
         </div>
       </BottomSheet>
 
-      <button
-        onClick={() => navigate('/asistente')}
-        aria-label="Abrir asistente"
-        className="cursor-pointer absolute bottom-6 right-4 z-40 group flex items-center gap-2 pl-3.5 pr-4 h-14 rounded-full bg-text-primary text-white vl-elev-3 active:scale-[0.97] transition-transform"
-      >
-        <Sparkles className="w-[18px] h-[18px] text-white" strokeWidth={2.4} />
-        <span className="text-[14px] font-semibold tracking-tight">Preguntar</span>
-      </button>
+      <div className="absolute bottom-6 right-4 z-40 flex flex-col items-end gap-2.5">
+        {hasUserLocation && (
+          <button
+            onClick={() => setFollowUser(true)}
+            aria-label={followUser ? 'Siguiendo tu ubicación' : 'Centrar en mi ubicación'}
+            className={`cursor-pointer w-12 h-12 rounded-full flex items-center justify-center vl-elev-3 active:scale-[0.95] transition-all border ${
+              followUser
+                ? 'bg-brand text-white border-brand'
+                : 'bg-white text-text-primary border-black/[0.06]'
+            }`}
+          >
+            <LocateFixed
+              className={`w-[18px] h-[18px] ${followUser ? 'text-white' : 'text-brand'}`}
+              strokeWidth={2.4}
+            />
+          </button>
+        )}
+        <button
+          onClick={() => navigate('/asistente')}
+          aria-label="Abrir asistente"
+          className="cursor-pointer group flex items-center gap-2 pl-3.5 pr-4 h-14 rounded-full bg-text-primary text-white vl-elev-3 active:scale-[0.97] transition-transform"
+        >
+          <Sparkles className="w-[18px] h-[18px] text-white" strokeWidth={2.4} />
+          <span className="text-[14px] font-semibold tracking-tight">Preguntar</span>
+        </button>
+      </div>
     </div>
   );
 }

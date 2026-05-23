@@ -2,13 +2,19 @@ import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { BARRANQUILLA_CENTER } from '../lib/mockData';
 
-type Status = 'idle' | 'loading' | 'granted' | 'denied' | 'unsupported';
+export type LocationStatus =
+  | 'idle'
+  | 'loading'
+  | 'granted'
+  | 'denied'
+  | 'unsupported'
+  | 'error';
 
 export function useLocation() {
   const userLat = useAppStore((s) => s.userLat);
   const userLng = useAppStore((s) => s.userLng);
   const setUserLocation = useAppStore((s) => s.setUserLocation);
-  const [status, setStatus] = useState<Status>('idle');
+  const [status, setStatus] = useState<LocationStatus>('idle');
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -16,18 +22,49 @@ export function useLocation() {
       setUserLocation(BARRANQUILLA_CENTER.lat, BARRANQUILLA_CENTER.lng);
       return;
     }
+
     setStatus('loading');
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setUserLocation(pos.coords.latitude, pos.coords.longitude);
+        setUserLocation(pos.coords.latitude, pos.coords.longitude, {
+          heading: pos.coords.heading,
+          accuracy: pos.coords.accuracy,
+        });
         setStatus('granted');
       },
-      () => {
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setStatus('denied');
+        } else {
+          setStatus('error');
+        }
         setUserLocation(BARRANQUILLA_CENTER.lat, BARRANQUILLA_CENTER.lng);
-        setStatus('denied');
       },
-      { enableHighAccuracy: false, timeout: 6000, maximumAge: 60_000 },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
     );
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setUserLocation(pos.coords.latitude, pos.coords.longitude, {
+          heading: pos.coords.heading,
+          accuracy: pos.coords.accuracy,
+        });
+        setStatus('granted');
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) setStatus('denied');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15_000,
+        maximumAge: 2_000,
+      },
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, [setUserLocation]);
 
   return {
