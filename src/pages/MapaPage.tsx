@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Sparkles, Info, Navigation2 } from 'lucide-react';
+import { Search, Sparkles, Navigation2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MapView from '../components/map/MapView';
 import ParaderoMarker from '../components/map/ParaderoMarker';
@@ -95,8 +95,8 @@ export default function MapaPage() {
       </MapView>
 
       <div className="absolute top-0 left-0 right-0 z-30 pt-[max(12px,env(safe-area-inset-top))]">
-        <div className="px-4 flex items-center gap-2.5">
-          <div className="flex-1 h-13 min-h-[52px] flex items-center gap-2.5 bg-white rounded-2xl px-4 vl-elev-3 border border-black/[0.04]">
+        <div className="px-4">
+          <div className="h-13 min-h-[52px] flex items-center gap-2.5 bg-white rounded-2xl px-4 vl-elev-3 border border-black/[0.04]">
             <Search className="w-[18px] h-[18px] text-text-secondary shrink-0" strokeWidth={2.4} />
             <input
               value={query}
@@ -113,13 +113,6 @@ export default function MapaPage() {
               </button>
             )}
           </div>
-          <button
-            onClick={() => navigate('/welcome')}
-            aria-label="Ver introducción"
-            className="cursor-pointer shrink-0 w-[52px] h-[52px] rounded-2xl bg-white vl-elev-3 border border-black/[0.04] flex items-center justify-center active:bg-surface-raised transition-colors"
-          >
-            <Info className="w-[18px] h-[18px] text-brand" strokeWidth={2.4} />
-          </button>
         </div>
 
         <div className="px-4 mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none">
