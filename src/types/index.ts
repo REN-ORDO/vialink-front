@@ -235,6 +235,14 @@ export type User = {
   favoritesCount?: number;
 };
 
+export type GeocodeSuggestion = {
+  id: string;
+  label: string;
+  fullAddress: string;
+  location: LatLng;
+  category: string | null;
+};
+
 export type ApiErrorShape = {
   statusCode: number;
   message: string;
