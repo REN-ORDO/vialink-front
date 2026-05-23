@@ -1,32 +1,77 @@
 import { api, ApiError, USE_MOCKS } from './api';
 import { paraderosMock } from './mockData';
 import { mockAskAssistant } from './llmMock';
+import {
+  landmarkDetailToParadero,
+  landmarkNearbyToParadero,
+  busesAtPointToBusList,
+  backendBusToBus,
+  backendTripToTrip,
+  backendWaitSessionToWaitSession,
+  backendIncidentToIncident,
+  backendAssistantAskToFrontend,
+  backendMeToUser,
+  backendAssistantMessageToChatMessage,
+} from './mappers';
 import type {
+  AlternativeRoute,
   AssistantAskResponse,
+  AuthTokens,
+  Bus,
+  ChatMessage,
   Incident,
   LatLng,
   Paradero,
   RouteRecommendation,
   Trip,
+  User,
+  WaitSession,
 } from '../types';
+import type {
+  BackendActiveTripResponse,
+  BackendAdminFeedResponse,
+  BackendAdminMetrics,
+  BackendAdminMetricsPayload,
+  BackendAssistantAskResponse,
+  BackendAssistantMessagesResponse,
+  BackendAuthSession,
+  BackendBusesAtPointResponse,
+  BackendCorridorGeoJSON,
+  BackendFavoritesResponse,
+  BackendIncidentsNearbyResponse,
+  BackendLandmarkDetail,
+  BackendLandmarkNearbyResponse,
+  BackendLandmarkSearchResponse,
+  BackendMe,
+  BackendNearbyRoutesResponse,
+  BackendRouteBusesResponse,
+  BackendRouteDetail,
+  BackendRouteListResponse,
+  BackendSimulatorStatus,
+  BackendTrip,
+  BackendWaitSession,
+} from '../types/backend';
 
-type AskAssistantInput = {
-  question: string;
-  location?: LatLng;
-};
-
-type AskAssistantOutput = AssistantAskResponse & {
-  recommendation?: RouteRecommendation;
+type BusesAtPointResult = {
+  routes: BackendBusesAtPointResponse['routes'];
+  busesFlat: Bus[];
 };
 
 export const dataSource = {
   useMocks: USE_MOCKS,
 
-  async getLandmarksNearby(location?: LatLng): Promise<Paradero[]> {
+  // ============================================================
+  // DISCOVERY · Landmarks
+  // ============================================================
+  async getLandmarksNearby(location?: LatLng, radiusM = 1500): Promise<Paradero[]> {
     if (USE_MOCKS) return paraderosMock;
-    const q = location ? `?lat=${location.lat}&lng=${location.lng}` : '';
+    const lat = location?.lat ?? 11.0041;
+    const lng = location?.lng ?? -74.807;
     try {
-      return await api.get<Paradero[]>(`/landmarks/nearby${q}`);
+      const raw = await api.get<BackendLandmarkNearbyResponse>(
+        `/landmarks/nearby?lat=${lat}&lng=${lng}&radius_m=${radiusM}`,
+      );
+      return raw.landmarks.map(landmarkNearbyToParadero);
     } catch (err) {
       if (err instanceof ApiError) return paraderosMock;
       throw err;
@@ -39,52 +84,391 @@ export const dataSource = {
       if (!found) throw new Error(`Paradero ${id} no encontrado`);
       return found;
     }
-    return api.get<Paradero>(`/landmarks/${id}`);
+    const detail = await api.get<BackendLandmarkDetail>(`/landmarks/${id}`);
+    try {
+      const buses = await api.post<BackendBusesAtPointResponse>(
+        '/buses-at-point',
+        { location: detail.location, radius_m: 100 },
+      );
+      return landmarkDetailToParadero(detail, buses);
+    } catch {
+      return landmarkDetailToParadero(detail);
+    }
   },
 
-  async askAssistant(input: AskAssistantInput): Promise<AskAssistantOutput> {
-    if (USE_MOCKS) return mockAskAssistant(input.question);
-    return api.post<AssistantAskResponse>('/assistant/ask', {
-      question: input.question,
-      location: input.location,
+  async searchLandmarks(query: string, limit = 10) {
+    if (USE_MOCKS) {
+      const q = query.toLowerCase();
+      return paraderosMock
+        .filter((p) => p.nombre.toLowerCase().includes(q))
+        .slice(0, limit)
+        .map((p) => ({
+          id: p.id,
+          name: p.nombre,
+          type: 'LANDMARK' as const,
+          location: { lat: p.lat, lng: p.lng },
+        }));
+    }
+    const raw = await api.get<BackendLandmarkSearchResponse>(
+      `/landmarks/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+    );
+    return raw.results;
+  },
+
+  // ============================================================
+  // DISCOVERY · Buses-at-point
+  // ============================================================
+  async getBusesAtPoint(
+    location: LatLng,
+    radiusM = 100,
+  ): Promise<BusesAtPointResult> {
+    if (USE_MOCKS) {
+      return { routes: [], busesFlat: [] };
+    }
+    const raw = await api.post<BackendBusesAtPointResponse>('/buses-at-point', {
+      location,
+      radius_m: radiusM,
     });
+    return {
+      routes: raw.routes,
+      busesFlat: busesAtPointToBusList(raw),
+    };
   },
 
+  // ============================================================
+  // DISCOVERY · Routes
+  // ============================================================
+  async listRoutes(mode?: 'TRADITIONAL' | 'BRT' | 'METRO') {
+    if (USE_MOCKS) return [];
+    const q = mode ? `?mode=${mode}` : '';
+    const raw = await api.get<BackendRouteListResponse>(`/routes${q}`);
+    return raw.routes;
+  },
+
+  async getRoute(id: string) {
+    if (USE_MOCKS) throw new Error('No disponible en mocks');
+    return api.get<BackendRouteDetail>(`/routes/${id}`);
+  },
+
+  async getRouteCorridor(id: string): Promise<BackendCorridorGeoJSON> {
+    if (USE_MOCKS) {
+      return {
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: [] },
+        properties: { route_id: id, code: '?', color: '#1E5EFF' },
+      };
+    }
+    return api.get<BackendCorridorGeoJSON>(`/routes/${id}/corridor.geojson`);
+  },
+
+  async getRouteBuses(routeId: string): Promise<Bus[]> {
+    if (USE_MOCKS) return [];
+    const [route, raw] = await Promise.all([
+      api.get<BackendRouteDetail>(`/routes/${routeId}`),
+      api.get<BackendRouteBusesResponse>(`/routes/${routeId}/buses`),
+    ]);
+    return raw.buses.map((b) => backendBusToBus(b, route.code, route));
+  },
+
+  async getRoutesNearby(location: LatLng, radiusM = 100) {
+    if (USE_MOCKS) return [];
+    const raw = await api.get<BackendNearbyRoutesResponse>(
+      `/routes/nearby?lat=${location.lat}&lng=${location.lng}&radius_m=${radiusM}`,
+    );
+    return raw.routes;
+  },
+
+  // ============================================================
+  // AUTH
+  // ============================================================
+  async signup(input: { email: string; password: string; name?: string }) {
+    if (USE_MOCKS) {
+      return {
+        tokens: { access_token: 'mock-token', refresh_token: 'mock-refresh' } as AuthTokens,
+        user: { id: 'mock-user', email: input.email, name: input.name } as User,
+      };
+    }
+    const raw = await api.post<BackendAuthSession>('/auth/signup', input);
+    return {
+      tokens: { access_token: raw.access_token, refresh_token: raw.refresh_token } as AuthTokens,
+      user: { id: raw.user.id, email: raw.user.email, name: raw.user.name ?? undefined } as User,
+    };
+  },
+
+  async login(input: { email: string; password: string }) {
+    if (USE_MOCKS) {
+      return {
+        tokens: { access_token: 'mock-token', refresh_token: 'mock-refresh' } as AuthTokens,
+        user: { id: 'mock-user', email: input.email } as User,
+      };
+    }
+    const raw = await api.post<BackendAuthSession>('/auth/login', input);
+    return {
+      tokens: { access_token: raw.access_token, refresh_token: raw.refresh_token } as AuthTokens,
+      user: { id: raw.user.id, email: raw.user.email, name: raw.user.name ?? undefined } as User,
+    };
+  },
+
+  async getMe(): Promise<User> {
+    if (USE_MOCKS) return { id: 'mock-user', email: 'mock@vialink.local' };
+    const raw = await api.get<BackendMe>('/me', { auth: true });
+    return backendMeToUser(raw);
+  },
+
+  // ============================================================
+  // FAVORITES
+  // ============================================================
+  async listFavorites() {
+    if (USE_MOCKS) return [];
+    const raw = await api.get<BackendFavoritesResponse>('/me/favorites', { auth: true });
+    return raw.favorites;
+  },
+
+  async addFavorite(input: {
+    target_type: 'LANDMARK' | 'ROUTE';
+    target_id: string;
+    alias?: string;
+  }) {
+    if (USE_MOCKS) return { id: 'mock-fav' };
+    return api.post<{ id: string }>('/me/favorites', input, { auth: true });
+  },
+
+  async removeFavorite(id: string) {
+    if (USE_MOCKS) return { deleted: true as const };
+    return api.del<{ deleted: true }>(`/me/favorites/${id}`, { auth: true });
+  },
+
+  // ============================================================
+  // TRIPS
+  // ============================================================
   async getActiveTrip(): Promise<Trip | null> {
     if (USE_MOCKS) return null;
-    return api.get<Trip | null>('/trips/active', { auth: true });
+    const raw = await api.get<BackendActiveTripResponse>('/trips/active', { auth: true });
+    return raw.trip ? backendTripToTrip(raw.trip) : null;
   },
 
   async startTrip(input: {
+    route_id: string;
     boarding_location: LatLng;
     dropoff_location: LatLng;
-    route_id: string;
+    boarding_landmark_id?: string;
+    dropoff_landmark_id?: string;
   }): Promise<Trip> {
-    if (USE_MOCKS) {
-      throw new Error('Inicio de viaje no disponible en modo mock');
-    }
-    return api.post<Trip>('/trips', input, { auth: true });
+    if (USE_MOCKS) throw new Error('Inicio de viaje no disponible en mocks');
+    const raw = await api.post<BackendTrip>('/trips', input, { auth: true });
+    return backendTripToTrip(raw);
   },
 
-  async completeTrip(tripId: string): Promise<Trip> {
-    if (USE_MOCKS) {
-      throw new Error('Completar viaje no disponible en modo mock');
-    }
-    return api.patch<Trip>(`/trips/${tripId}`, { status: 'COMPLETED' }, { auth: true });
+  async getTrip(id: string): Promise<Trip> {
+    if (USE_MOCKS) throw new Error('Trip detail no disponible en mocks');
+    const raw = await api.get<BackendTrip>(`/trips/${id}`, { auth: true });
+    return backendTripToTrip(raw);
   },
 
-  async cancelTrip(tripId: string): Promise<Trip> {
-    if (USE_MOCKS) {
-      throw new Error('Cancelar viaje no disponible en modo mock');
-    }
-    return api.patch<Trip>(`/trips/${tripId}`, { status: 'CANCELLED' }, { auth: true });
+  async updateTripStatus(
+    id: string,
+    status: 'COMPLETED' | 'CANCELLED',
+  ): Promise<Trip> {
+    if (USE_MOCKS) throw new Error('Update trip no disponible en mocks');
+    const raw = await api.patch<BackendTrip>(`/trips/${id}`, { status }, { auth: true });
+    return backendTripToTrip(raw);
   },
 
-  async listIncidentsNearby(location: LatLng, radiusM = 1500): Promise<Incident[]> {
-    if (USE_MOCKS) return [];
-    return api.get<Incident[]>(
-      `/incidents/nearby?lat=${location.lat}&lng=${location.lng}&radius=${radiusM}`,
+  async rateTrip(id: string, stars: number, comment?: string) {
+    if (USE_MOCKS) return { id: 'mock-rating', stars };
+    return api.post<{ id: string; stars: number; comment: string | null }>(
+      `/trips/${id}/rating`,
+      { stars, comment },
+      { auth: true },
     );
+  },
+
+  // ============================================================
+  // WAIT SESSIONS
+  // ============================================================
+  async createWaitSession(input: {
+    location: LatLng;
+    route_id?: string;
+    notify_seconds_before?: number;
+  }): Promise<WaitSession> {
+    if (USE_MOCKS) {
+      return {
+        id: `mock-wait-${Date.now()}`,
+        location: input.location,
+        routeId: input.route_id,
+        alertBeforeSeconds: input.notify_seconds_before ?? 180,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    const raw = await api.post<BackendWaitSession>(
+      '/wait-sessions',
+      input,
+      { auth: true },
+    );
+    return backendWaitSessionToWaitSession(raw);
+  },
+
+  async cancelWaitSession(id: string) {
+    if (USE_MOCKS) return { cancelled: true as const };
+    return api.del<{ cancelled: true }>(`/wait-sessions/${id}`, { auth: true });
+  },
+
+  // ============================================================
+  // INCIDENTS
+  // ============================================================
+  async reportIncident(input: {
+    type: 'TRAFFIC' | 'FULL_BUS' | 'NO_BUS_PASSING' | 'ACCIDENT';
+    location: LatLng;
+    route_id?: string;
+    description?: string;
+  }) {
+    if (USE_MOCKS) {
+      return { id: `mock-inc-${Date.now()}`, type: input.type, location: input.location };
+    }
+    return api.post<{ id: string; type: string; location: LatLng }>(
+      '/incidents',
+      input,
+      { auth: true },
+    );
+  },
+
+  async listIncidentsNearby(
+    location: LatLng,
+    radiusM = 1500,
+    sinceMin = 60,
+  ): Promise<Incident[]> {
+    if (USE_MOCKS) return [];
+    const raw = await api.get<BackendIncidentsNearbyResponse>(
+      `/incidents/nearby?lat=${location.lat}&lng=${location.lng}&radius_m=${radiusM}&since_minutes=${sinceMin}`,
+    );
+    return raw.incidents.map(backendIncidentToIncident);
+  },
+
+  // ============================================================
+  // ASSISTANT
+  // ============================================================
+  async askAssistant(input: {
+    question: string;
+    location?: LatLng;
+  }): Promise<
+    AssistantAskResponse & {
+      recommendation?: RouteRecommendation;
+      alternatives?: AlternativeRoute[];
+    }
+  > {
+    if (USE_MOCKS) return mockAskAssistant(input.question);
+    const raw = await api.post<BackendAssistantAskResponse>(
+      '/assistant/ask',
+      input,
+      { auth: true },
+    );
+    return backendAssistantAskToFrontend(raw);
+  },
+
+  async listAssistantMessages(limit = 20): Promise<ChatMessage[]> {
+    if (USE_MOCKS) return [];
+    const raw = await api.get<BackendAssistantMessagesResponse>(
+      `/assistant/messages?limit=${limit}`,
+      { auth: true },
+    );
+    const out: ChatMessage[] = [];
+    for (const m of raw.messages) {
+      const pair = backendAssistantMessageToChatMessage(m);
+      out.push(pair.user, pair.assistant);
+    }
+    return out.reverse();
+  },
+
+  // ============================================================
+  // ADMIN
+  // ============================================================
+  async getAdminMetrics(): Promise<BackendAdminMetricsPayload> {
+    if (USE_MOCKS) {
+      return {
+        active_users: 437,
+        active_trips: 89,
+        ai_questions_per_minute: 23,
+        incidents_last_hour: 4,
+        buses_in_service: 142,
+        active_wait_sessions: 12,
+      };
+    }
+    const raw = await api.get<BackendAdminMetrics>('/admin/metrics');
+    return raw.metrics;
+  },
+
+  async getAdminFeed(limit = 50, since?: string) {
+    if (USE_MOCKS) return [];
+    const q = `?limit=${limit}${since ? `&since=${encodeURIComponent(since)}` : ''}`;
+    const raw = await api.get<BackendAdminFeedResponse>(`/admin/feed${q}`);
+    return raw.events;
+  },
+
+  async startSimulator(agentCount = 100) {
+    if (USE_MOCKS) {
+      return {
+        status: 'RUNNING' as const,
+        agent_count: agentCount,
+        agents_by_profile: {},
+        actions_last_minute: 0,
+        llm_calls_last_minute: 0,
+        ticks_processed: 0,
+        last_tick_ms: null,
+        started_at: new Date().toISOString(),
+      };
+    }
+    return api.post<BackendSimulatorStatus>(
+      '/admin/simulator/start',
+      { agent_count: agentCount },
+    );
+  },
+
+  async stopSimulator() {
+    if (USE_MOCKS) {
+      return {
+        status: 'STOPPED' as const,
+        agent_count: 0,
+        agents_by_profile: {},
+        actions_last_minute: 0,
+        llm_calls_last_minute: 0,
+        ticks_processed: 0,
+        last_tick_ms: null,
+        started_at: null,
+      };
+    }
+    return api.post<BackendSimulatorStatus>('/admin/simulator/stop');
+  },
+
+  async resetSimulator() {
+    if (USE_MOCKS) {
+      return {
+        status: 'STOPPED' as const,
+        agent_count: 0,
+        agents_by_profile: {},
+        actions_last_minute: 0,
+        llm_calls_last_minute: 0,
+        ticks_processed: 0,
+        last_tick_ms: null,
+        started_at: null,
+      };
+    }
+    return api.post<BackendSimulatorStatus>('/admin/simulator/reset');
+  },
+
+  async getSimulatorStatus(): Promise<BackendSimulatorStatus> {
+    if (USE_MOCKS) {
+      return {
+        status: 'STOPPED',
+        agent_count: 0,
+        agents_by_profile: {},
+        actions_last_minute: 0,
+        llm_calls_last_minute: 0,
+        ticks_processed: 0,
+        last_tick_ms: null,
+        started_at: null,
+      };
+    }
+    return api.get<BackendSimulatorStatus>('/admin/simulator/status');
   },
 };
 
