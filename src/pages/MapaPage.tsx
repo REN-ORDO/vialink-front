@@ -340,8 +340,13 @@ export default function MapaPage() {
         </button>
       </div>
 
+      {/* BusDetailSheet SOLO se muestra cuando NO hay una recomendación
+          de ruta activa. Si hay rec, el RouteRecommendationSheet es la
+          fuente primaria (incluye route_code, plate, wait, ride, paraderos)
+          — abrir BusDetailSheet encima taparía la info principal de "cómo
+          llegar". El bus sigue resaltado sobre el mapa con selectedBusId. */}
       <BusDetailSheet
-        busId={selectedBusId}
+        busId={committedRec ? null : selectedBusId}
         userLocation={userLocation}
         onClose={() => setSelectedBusId(null)}
       />
