@@ -14,6 +14,8 @@ import AddressSearchBar from '../components/ui/AddressSearchBar';
 import BusDetailSheet from '../components/map/BusDetailSheet';
 import RouteRecommendationSheet from '../components/map/RouteRecommendationSheet';
 import RouteVisualizer from '../components/map/RouteVisualizer';
+import AlternativeRoutesLayer from '../components/map/AlternativeRoutesLayer';
+import { useRouteRecommendation } from '../hooks/useRouteRecommendation';
 import { BARRANQUILLA_CENTER } from '../lib/mockData';
 import { FEATURE_FLAGS } from '../lib/featureFlags';
 import { useParaderos } from '../hooks/useParaderos';
@@ -101,6 +103,18 @@ export default function MapaPage() {
     enabled: !!selectedBusId,
   });
 
+  // Recomendaciones de ruta — el hook está deduplicado por TanStack Query
+  // (mismo queryKey que el sheet, no genera HTTP extra).
+  // Las usamos para pintar las alternativas en el mapa como polylines
+  // de colores distintos (ámbar / cyan) además de la primary.
+  const { data: recsData } = useRouteRecommendation(userLocation, destination);
+  const alternativeRecs = useMemo(() => {
+    if (!recsData || !committedRec) return [];
+    return recsData.recommendations.filter(
+      (r) => r.bus.id !== committedRec.bus.id,
+    );
+  }, [recsData, committedRec]);
+
   const center = useMemo(
     () => ({
       lat: lat ?? BARRANQUILLA_CENTER.lat,
@@ -140,6 +154,20 @@ export default function MapaPage() {
             recommendation={committedRec}
             userLocation={userLocation}
             destination={destination}
+          />
+        )}
+        {/* Rutas alternativas pintadas sobre el mapa en colores distintos
+            (ámbar dashed + cyan dashed), con pill flotante en el midpoint
+            mostrando nombre + tiempo. Tap en la línea o en la pill =
+            re-commitea esa ruta como la primary. Renderiza solo si hay
+            una committed + alternativas disponibles. */}
+        {committedRec && alternativeRecs.length > 0 && (
+          <AlternativeRoutesLayer
+            alternatives={alternativeRecs}
+            onPickAlternative={(alt) => {
+              setCommittedRec(alt);
+              setSelectedBusId(alt.bus.id);
+            }}
           />
         )}
         {/* Polyline del corridor completo del bus seleccionado (solo si
