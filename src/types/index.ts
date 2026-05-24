@@ -235,6 +235,46 @@ export type User = {
   favoritesCount?: number;
 };
 
+export type BusServiceStatus = 'IN_SERVICE' | 'OUT_OF_SERVICE' | 'COMPLETED';
+
+export type BusDetails = {
+  id: string;
+  plate: string;
+  location: LatLng;
+  heading: number;
+  speedKmh: number;
+  fractionOfCorridor: number;
+  status: BusServiceStatus;
+  lastSeenAt: string;
+  route: {
+    id: string;
+    code: string;
+    name: string;
+    color: string;
+    mode: 'TRADITIONAL' | 'BRT' | 'METRO';
+    operator: string | null;
+    lengthKm: number | null;
+  };
+  polyline: LatLng[];
+  nextLandmark: {
+    id: string;
+    name: string;
+    location: LatLng;
+    etaSeconds: number;
+    distanceM: number;
+  } | null;
+  etaToUser: {
+    etaSeconds: number;
+    distanceM: number;
+    nearestCorridorPoint: LatLng;
+  } | null;
+  stats: {
+    completedKm: number;
+    completedPct: number;
+    remainingKm: number;
+  };
+};
+
 export type GeocodeSuggestion = {
   id: string;
   label: string;

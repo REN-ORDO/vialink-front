@@ -146,6 +146,63 @@ export interface BackendBusesAtPointResponse {
   routes: BackendBusesAtPointRoute[];
 }
 
+// ===== Bus details (modal click-on-bus) =====
+export type BackendBusServiceStatus =
+  | 'IN_SERVICE'
+  | 'OUT_OF_SERVICE'
+  | 'COMPLETED';
+
+export interface BackendBusDetailsBus {
+  id: string;
+  plate: string;
+  location: LatLng;
+  heading: number | null;
+  speed_kmh: number;
+  fraction_of_corridor: number;
+  status: BackendBusServiceStatus;
+  last_seen_at: string;
+}
+
+export interface BackendBusDetailsRoute {
+  id: string;
+  code: string;
+  name: string;
+  color: string;
+  mode: BackendRouteMode;
+  operator: string | null;
+  length_km: number | null;
+}
+
+export interface BackendBusDetailsNextLandmark {
+  id: string;
+  name: string;
+  type: BackendLandmarkType;
+  location: LatLng;
+  eta_seconds: number;
+  distance_m: number;
+}
+
+export interface BackendBusDetailsEtaToUser {
+  eta_seconds: number;
+  distance_m: number;
+  nearest_corridor_point: LatLng;
+}
+
+export interface BackendBusDetailsStats {
+  completed_km: number;
+  completed_pct: number;
+  remaining_km: number;
+}
+
+export interface BackendBusDetailsResponse {
+  bus: BackendBusDetailsBus;
+  route: BackendBusDetailsRoute;
+  polyline: BackendCorridorGeoJSON;
+  next_landmark: BackendBusDetailsNextLandmark | null;
+  eta_to_user: BackendBusDetailsEtaToUser | null;
+  stats: BackendBusDetailsStats;
+}
+
 // ===== Geocode =====
 export type BackendGeocodeCategory =
   | 'address'

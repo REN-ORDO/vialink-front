@@ -3,6 +3,7 @@ import type {
   Ruta,
   RutaEstado,
   Bus,
+  BusDetails,
   OperatorId,
   Trip,
   AssistantAskResponse,
@@ -19,6 +20,7 @@ import type {
   BackendBusesAtPointResponse,
   BackendRoute,
   BackendBus,
+  BackendBusDetailsResponse,
   BackendTrip,
   BackendAssistantAskResponse,
   BackendSuggestedAction,
@@ -265,6 +267,59 @@ export function backendMeToUser(m: BackendMe): User {
     city: m.city_code,
     tripsCount: m.trips_count,
     favoritesCount: m.favorites_count,
+  };
+}
+
+// ============================================================
+// Bus details (modal click-on-bus)
+// ============================================================
+
+export function backendBusDetailsToBusDetails(
+  d: BackendBusDetailsResponse,
+): BusDetails {
+  return {
+    id: d.bus.id,
+    plate: d.bus.plate,
+    location: d.bus.location,
+    heading: d.bus.heading ?? 0,
+    speedKmh: d.bus.speed_kmh,
+    fractionOfCorridor: d.bus.fraction_of_corridor,
+    status: d.bus.status,
+    lastSeenAt: d.bus.last_seen_at,
+    route: {
+      id: d.route.id,
+      code: d.route.code,
+      name: d.route.name,
+      color: d.route.color,
+      mode: d.route.mode,
+      operator: d.route.operator,
+      lengthKm: d.route.length_km,
+    },
+    polyline: d.polyline.geometry.coordinates.map(([lng, lat]) => ({
+      lat,
+      lng,
+    })),
+    nextLandmark: d.next_landmark
+      ? {
+          id: d.next_landmark.id,
+          name: d.next_landmark.name,
+          location: d.next_landmark.location,
+          etaSeconds: d.next_landmark.eta_seconds,
+          distanceM: d.next_landmark.distance_m,
+        }
+      : null,
+    etaToUser: d.eta_to_user
+      ? {
+          etaSeconds: d.eta_to_user.eta_seconds,
+          distanceM: d.eta_to_user.distance_m,
+          nearestCorridorPoint: d.eta_to_user.nearest_corridor_point,
+        }
+      : null,
+    stats: {
+      completedKm: d.stats.completed_km,
+      completedPct: d.stats.completed_pct,
+      remainingKm: d.stats.remaining_km,
+    },
   };
 }
 

@@ -6,6 +6,7 @@ import {
   landmarkNearbyToParadero,
   busesAtPointToBusList,
   backendBusToBus,
+  backendBusDetailsToBusDetails,
   backendTripToTrip,
   backendWaitSessionToWaitSession,
   backendIncidentToIncident,
@@ -19,6 +20,7 @@ import type {
   AssistantAskResponse,
   AuthTokens,
   Bus,
+  BusDetails,
   ChatMessage,
   GeocodeSuggestion,
   Incident,
@@ -37,6 +39,7 @@ import type {
   BackendAssistantAskResponse,
   BackendAssistantMessagesResponse,
   BackendAuthSession,
+  BackendBusDetailsResponse,
   BackendBusesAtPointResponse,
   BackendCorridorGeoJSON,
   BackendFavoritesResponse,
@@ -54,6 +57,7 @@ import type {
   BackendTrip,
   BackendWaitSession,
 } from '../types/backend';
+import { busesMock } from './mockData';
 
 type BusesAtPointResult = {
   routes: BackendBusesAtPointResponse['routes'];
@@ -171,6 +175,71 @@ export const dataSource = {
       api.get<BackendRouteBusesResponse>(`/routes/${routeId}/buses`),
     ]);
     return raw.buses.map((b) => backendBusToBus(b, route.code, route));
+  },
+
+  // ============================================================
+  // DISCOVERY · Bus details (modal click-on-bus)
+  // ============================================================
+  async getBusDetails(
+    busId: string,
+    userLocation?: LatLng,
+  ): Promise<BusDetails> {
+    if (USE_MOCKS) {
+      const found = busesMock.find((b) => b.id === busId);
+      if (!found) throw new ApiError(404, `Bus ${busId} no encontrado`);
+      return {
+        id: found.id,
+        plate: `MOCK-${found.id.toUpperCase()}`,
+        location: { lat: found.lat, lng: found.lng },
+        heading: found.heading,
+        speedKmh: 22,
+        fractionOfCorridor: 0.4,
+        status: 'IN_SERVICE',
+        lastSeenAt: new Date().toISOString(),
+        route: {
+          id: `mock-route-${found.rutaNombre}`,
+          code: found.rutaNombre,
+          name: `Ruta ${found.rutaNombre}`,
+          color: '#1E5EFF',
+          mode: 'TRADITIONAL',
+          operator: 'Mock Operator',
+          lengthKm: 12.5,
+        },
+        polyline: [
+          { lat: found.lat - 0.01, lng: found.lng - 0.01 },
+          { lat: found.lat, lng: found.lng },
+          { lat: found.lat + 0.01, lng: found.lng + 0.01 },
+        ],
+        nextLandmark: {
+          id: 'mock-lm',
+          name: 'Próximo paradero',
+          location: { lat: found.lat + 0.005, lng: found.lng + 0.005 },
+          etaSeconds: 180,
+          distanceM: 600,
+        },
+        etaToUser: userLocation
+          ? {
+              etaSeconds: 240,
+              distanceM: 900,
+              nearestCorridorPoint: { lat: found.lat, lng: found.lng },
+            }
+          : null,
+        stats: {
+          completedKm: 5.0,
+          completedPct: 0.4,
+          remainingKm: 7.5,
+        },
+      };
+    }
+    const params = new URLSearchParams();
+    if (userLocation) {
+      params.set('lat', userLocation.lat.toString());
+      params.set('lng', userLocation.lng.toString());
+    }
+    const qs = params.toString();
+    const path = `/buses/${busId}/details${qs ? `?${qs}` : ''}`;
+    const raw = await api.get<BackendBusDetailsResponse>(path);
+    return backendBusDetailsToBusDetails(raw);
   },
 
   async getRoutesNearby(location: LatLng, radiusM = 100) {
