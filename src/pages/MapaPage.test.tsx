@@ -9,20 +9,11 @@ vi.mock('../components/map/MapView', () => ({
     <div data-testid="mock-mapview">{children}</div>
   ),
 }));
-vi.mock('react-leaflet', async () => {
-  const actual = await vi.importActual<typeof import('react-leaflet')>(
-    'react-leaflet',
-  );
-  return {
-    ...actual,
-    Polyline: ({ positions }: { positions: [number, number][] }) => (
-      <div
-        data-testid="mock-polyline"
-        data-points={String(positions.length)}
-      />
-    ),
-  };
-});
+vi.mock('../components/map/MapPolyline', () => ({
+  default: ({ positions }: { positions: { lat: number; lng: number }[] }) => (
+    <div data-testid="mock-polyline" data-points={String(positions.length)} />
+  ),
+}));
 vi.mock('../components/map/ParaderoMarker', () => ({ default: () => null }));
 vi.mock('../components/map/buses3d/Bus3DMarker', () => ({
   default: ({

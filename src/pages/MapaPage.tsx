@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Sparkles, Navigation2, LocateFixed, X, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Polyline } from 'react-leaflet';
 import MapView from '../components/map/MapView';
+import MapPolyline from '../components/map/MapPolyline';
 import ParaderoMarker from '../components/map/ParaderoMarker';
 import Bus3DMarker from '../components/map/buses3d/Bus3DMarker';
 import UserLocationMarker, {
@@ -113,15 +113,11 @@ export default function MapaPage() {
           <ParaderoMarker key={p.id} paradero={p} />
         ))}
         {busDetails && busDetails.polyline.length > 1 && (
-          <Polyline
-            positions={busDetails.polyline.map((p) => [p.lat, p.lng])}
-            pathOptions={{
-              color: busDetails.route.color,
-              weight: 5,
-              opacity: 0.85,
-              lineCap: 'round',
-              lineJoin: 'round',
-            }}
+          <MapPolyline
+            positions={busDetails.polyline}
+            color={busDetails.route.color}
+            weight={5}
+            opacity={0.85}
           />
         )}
         {buses.map((b) => (
