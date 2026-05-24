@@ -1,19 +1,20 @@
 import { Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
+import { useWalkingRoute } from '../../hooks/useWalkingRoute';
 import type { LatLng, TripRouteRecommendation } from '../../types';
 
 /**
  * Renderiza dentro de <MapView> la visualización completa de una
- * recomendación de ruta seleccionada:
+ * recomendación de ruta:
  *
- *   user 🔵 - - dashed - - 🟢 board paradero
- *                            ━━━━ bus segment (color de la ruta) ━━━━
- *                                                                 🔷 alight paradero
- *                                                                    - - dashed - - 🔴 destination
+ *   user 🔵 ┄┄ walk (siguiendo calles reales) ┄┄ 🟢 board
+ *                                                  ━━━━ bus segment ━━━━
+ *                                                                    🔷 alight
+ *                                                                       ┄┄ walk ┄┄ 🎯 destino
  *
- * Las dos caminatas son línea recta (Phase 6 podría usar Mapbox walking).
- * El tramo bus viene del PostGIS `ST_LineSubstring` ya recortado al
- * subset board→alight, así que es preciso sobre la malla vial real.
+ * Las caminatas usan Mapbox Directions (walking profile) vía
+ * `useWalkingRoute` — si falla, fallback a línea recta. El polyline
+ * del bus viene pre-cortado del corridor (PostGIS ST_LineSubstring).
  */
 
 type Props = {
@@ -21,10 +22,6 @@ type Props = {
   userLocation: LatLng;
   destination: LatLng;
 };
-
-// ============================================================
-// Iconos custom (DivIcon stable, no se rebuildean en cada render)
-// ============================================================
 
 const boardIcon = L.divIcon({
   className: 'vl-rec-paradero-marker vl-rec-paradero-board',
@@ -71,19 +68,25 @@ export default function RouteVisualizer({
   const alight = recommendation.walkingFromAlight.paradero;
   const busPolyline = recommendation.polylineBus;
 
-  // Caminata user → board (línea recta dashed)
-  const walkToBoardCoords: [number, number][] = [
-    [userLocation.lat, userLocation.lng],
-    [board.lat, board.lng],
-  ];
+  // Caminatas reales (siguen calles). Mapbox bajo el hood en backend.
+  // Mientras llegan, mostramos línea recta como placeholder.
+  const walkToBoardQ = useWalkingRoute(userLocation, {
+    lat: board.lat,
+    lng: board.lng,
+  });
+  const walkFromAlightQ = useWalkingRoute(
+    { lat: alight.lat, lng: alight.lng },
+    destination,
+  );
 
-  // Caminata alight → destination (línea recta dashed)
-  const walkFromAlightCoords: [number, number][] = [
-    [alight.lat, alight.lng],
-    [destination.lat, destination.lng],
-  ];
+  const walkToBoardCoords: [number, number][] = (
+    walkToBoardQ.data?.polyline ?? [userLocation, { lat: board.lat, lng: board.lng }]
+  ).map((p) => [p.lat, p.lng]);
 
-  // Polyline del tramo en bus (PostGIS lo cortó del corridor real)
+  const walkFromAlightCoords: [number, number][] = (
+    walkFromAlightQ.data?.polyline ?? [{ lat: alight.lat, lng: alight.lng }, destination]
+  ).map((p) => [p.lat, p.lng]);
+
   const busSegmentCoords: [number, number][] = busPolyline.map((p) => [
     p.lat,
     p.lng,
@@ -91,19 +94,20 @@ export default function RouteVisualizer({
 
   return (
     <>
-      {/* Walking: user → board paradero */}
+      {/* Walking: user → board (caminata real siguiendo calles) */}
       <Polyline
         positions={walkToBoardCoords}
         pathOptions={{
           color: '#5B6470',
           weight: 4,
-          opacity: 0.7,
+          opacity: 0.75,
           dashArray: '2 8',
           lineCap: 'round',
+          lineJoin: 'round',
         }}
       />
 
-      {/* Bus segment con halo blanco debajo (look "outline") */}
+      {/* Bus segment con outline blanco (look elevado) */}
       {busSegmentCoords.length > 1 && (
         <>
           <Polyline
@@ -129,19 +133,19 @@ export default function RouteVisualizer({
         </>
       )}
 
-      {/* Walking: alight → destination */}
+      {/* Walking: alight → destination (caminata real) */}
       <Polyline
         positions={walkFromAlightCoords}
         pathOptions={{
           color: '#5B6470',
           weight: 4,
-          opacity: 0.7,
+          opacity: 0.75,
           dashArray: '2 8',
           lineCap: 'round',
+          lineJoin: 'round',
         }}
       />
 
-      {/* Markers resaltados */}
       <Marker position={[board.lat, board.lng]} icon={boardIcon} />
       <Marker position={[alight.lat, alight.lng]} icon={alightIcon} />
       <Marker

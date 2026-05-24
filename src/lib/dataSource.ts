@@ -52,6 +52,7 @@ import type {
   BackendBusListResponse,
   BackendBusesAtPointResponse,
   BackendRouteRecommendResponse,
+  BackendWalkDirections,
   BackendCorridorGeoJSON,
   BackendFavoritesResponse,
   BackendGeocodeResponse,
@@ -316,6 +317,27 @@ export const dataSource = {
       },
     );
     return backendRouteRecommendResponseToTripRouteRec(raw);
+  },
+
+  /**
+   * Caminata real entre 2 puntos siguiendo calles (Mapbox walking).
+   * Devuelve polyline + distance + duration. Cache 24h en backend.
+   * Si backend falla, devuelve line recta como fallback.
+   */
+  async getWalkingRoute(from: LatLng, to: LatLng): Promise<BackendWalkDirections> {
+    if (USE_MOCKS) {
+      return {
+        polyline: [from, to],
+        distance_m: 0,
+        duration_seconds: 60,
+      };
+    }
+    try {
+      return await api.post<BackendWalkDirections>('/routing/walk', { from, to });
+    } catch (err) {
+      console.warn('getWalkingRoute fallback línea recta:', err);
+      return { polyline: [from, to], distance_m: 0, duration_seconds: 0 };
+    }
   },
 
   // ============================================================

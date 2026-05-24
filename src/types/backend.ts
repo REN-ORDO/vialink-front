@@ -539,3 +539,10 @@ export interface BackendRouteRecommendResponse {
   recommendations: BackendRouteRecommendation[];
   generated_at: string;
 }
+
+// ===== Walking directions (Mapbox via backend) =====
+export interface BackendWalkDirections {
+  polyline: LatLng[];
+  distance_m: number;
+  duration_seconds: number;
+}
