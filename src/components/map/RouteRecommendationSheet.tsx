@@ -200,8 +200,11 @@ export default function RouteRecommendationSheet({
       <motion.div
         onPointerDown={(e) => dragControls.start(e)}
         onTap={(_, info) => {
-          // onTap de framer solo dispara si NO hubo drag significativo
-          if (Math.abs(info.offset.y) < 5) toggleSnap();
+          // onTap de framer solo dispara si NO hubo drag significativo.
+          // En algunos paths (touch en mobile) info.offset puede venir
+          // undefined → guard defensivo para no crashear el sheet.
+          const offsetY = info?.offset?.y ?? 0;
+          if (Math.abs(offsetY) < 5) toggleSnap();
         }}
         className="shrink-0 cursor-grab active:cursor-grabbing select-none"
       >
