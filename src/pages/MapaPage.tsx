@@ -15,6 +15,7 @@ import BusDetailSheet from '../components/map/BusDetailSheet';
 import RouteRecommendationSheet from '../components/map/RouteRecommendationSheet';
 import RouteVisualizer from '../components/map/RouteVisualizer';
 import { BARRANQUILLA_CENTER } from '../lib/mockData';
+import { FEATURE_FLAGS } from '../lib/featureFlags';
 import { useParaderos } from '../hooks/useParaderos';
 import { useBusDetails } from '../hooks/useBusDetails';
 import { useAllBuses } from '../hooks/useAllBuses';
@@ -112,9 +113,10 @@ export default function MapaPage() {
   return (
     <div className="relative flex-1 overflow-hidden">
       <MapView>
-        {(paraderos ?? []).map((p) => (
-          <ParaderoMarker key={p.id} paradero={p} />
-        ))}
+        {FEATURE_FLAGS.showParaderos &&
+          (paraderos ?? []).map((p) => (
+            <ParaderoMarker key={p.id} paradero={p} />
+          ))}
         {/* Visualización de la ruta committeada (polyline bus + caminata +
             paraderos abordaje/descenso). NO renderiza el polyline del
             corridor completo, solo el tramo board→alight. */}
@@ -206,6 +208,7 @@ export default function MapaPage() {
         />
       )}
 
+      {FEATURE_FLAGS.showParaderos && (
       <BottomSheet initial="half" collapsedHeight={148}>
         <div className="px-5 pb-8">
           <div className="pt-1 pb-3.5 flex items-end justify-between">
@@ -308,6 +311,7 @@ export default function MapaPage() {
           </div>
         </div>
       </BottomSheet>
+      )}
 
       <div className="absolute bottom-6 right-4 z-40 flex flex-col items-end gap-2.5">
         {hasUserLocation && (
