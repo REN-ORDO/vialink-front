@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  motion,
+  useAnimation,
+  useDragControls,
+  useMotionValue,
+  type PanInfo,
+} from 'framer-motion';
 import {
   X,
   Footprints,
@@ -16,6 +23,30 @@ import { useBusDetails } from '../../hooks/useBusDetails';
 import { useRealtime } from '../../hooks/useRealtime';
 import SmartSuggestionsBanner from './SmartSuggestionsBanner';
 import type { LatLng, TripRouteRecommendation } from '../../types';
+
+/**
+ * Bottom sheet draggable estilo iOS con 3 snap points:
+ *
+ *   COLLAPSED — solo header + carousel < ● ○ > (~200px). El mapa
+ *               recupera ~85% del viewport para que el user vea las
+ *               alternativas pintadas en colores y los buses moverse.
+ *   HALF      — la mitad del sheet, con primary card visible.
+ *   FULL      — sheet a 85vh, con todo: primary + sugerencias + alts.
+ *
+ * Interacción:
+ *   - Drag del handle / header arriba o abajo → snap al siguiente.
+ *   - Tap del handle → toggle entre collapsed ↔ half.
+ *   - Click en X o en flechas del carousel NO mueve el sheet
+ *     (stopPropagation en sus pointerdown).
+ *   - Al cambiar destino → reset a 'collapsed' para que el user
+ *     vea el mapa primero.
+ */
+type SnapState = 'collapsed' | 'half' | 'full';
+
+/** Altura visible cuando está COLLAPSED (handle + header + carousel). */
+const PEEK_HEIGHT_PX = 200;
+/** Altura total del sheet como fracción del viewport. */
+const SHEET_HEIGHT_VH = 0.85;
 
 type Props = {
   destination: LatLng | null;
@@ -44,6 +75,56 @@ export default function RouteRecommendationSheet({
   );
   const [expandedRank, setExpandedRank] = useState<number | null>(null);
 
+  // -------- Bottom sheet snap state --------
+  const [snapState, setSnapState] = useState<SnapState>('collapsed');
+  const [viewportH, setViewportH] = useState<number>(() =>
+    typeof window !== 'undefined' ? window.innerHeight : 800,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => setViewportH(window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // El sheet ocupa SHEET_HEIGHT_VH del viewport. Los snap points se
+  // calculan en px relativos al top del sheet (y=0 = todo arriba).
+  const sheetHeight = viewportH * SHEET_HEIGHT_VH;
+  const snaps = useMemo(
+    () => ({
+      full: 0,
+      half: Math.round(sheetHeight * 0.5),
+      collapsed: Math.max(0, Math.round(sheetHeight - PEEK_HEIGHT_PX)),
+    }),
+    [sheetHeight],
+  );
+
+  const y = useMotionValue(snaps.collapsed);
+  const controls = useAnimation();
+  const dragControls = useDragControls();
+
+  // Animate to current snap state. Corre cuando snapState cambia o
+  // cuando recalculan los snaps (resize).
+  useEffect(() => {
+    controls.start({
+      y: snaps[snapState],
+      transition: { type: 'spring', damping: 32, stiffness: 280 },
+    });
+  }, [snapState, snaps, controls]);
+
+  // Reset a 'collapsed' cuando cambia el destino — queremos que el
+  // user vea el mapa primero al abrir un nuevo destino y elija si
+  // quiere expandir el detalle.
+  const prevDestKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!destination) return;
+    const key = `${destination.lat},${destination.lng}`;
+    if (prevDestKey.current !== key) {
+      prevDestKey.current = key;
+      setSnapState('collapsed');
+    }
+  }, [destination]);
+
   // Auto-commit del top recomendado apenas llega el primer resultado.
   // Así el mapa pinta la ruta sin que el user tenga que tocar nada.
   const autoCommittedKeyRef = useRef<string | null>(null);
@@ -57,6 +138,33 @@ export default function RouteRecommendationSheet({
     onSelectRecommendation(top);
   }, [data, destination, onSelectRecommendation]);
 
+  // -------- Drag end → decide next snap --------
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    const velocity = info.velocity.y;
+    const offset = info.offset.y;
+    const SWIPE_VEL = 500;
+    const SWIPE_DIST = 60;
+
+    setSnapState((prev) => {
+      if (prev === 'collapsed') {
+        if (offset < -SWIPE_DIST || velocity < -SWIPE_VEL) return 'half';
+        return prev;
+      }
+      if (prev === 'half') {
+        if (offset < -SWIPE_DIST || velocity < -SWIPE_VEL) return 'full';
+        if (offset > SWIPE_DIST || velocity > SWIPE_VEL) return 'collapsed';
+        return prev;
+      }
+      // full
+      if (offset > SWIPE_DIST || velocity > SWIPE_VEL) return 'half';
+      return prev;
+    });
+  };
+
+  const toggleSnap = () => {
+    setSnapState((prev) => (prev === 'collapsed' ? 'half' : 'collapsed'));
+  };
+
   if (!destination) return null;
 
   const recs = data?.recommendations ?? [];
@@ -68,98 +176,147 @@ export default function RouteRecommendationSheet({
   );
 
   return (
-    <div
+    <motion.div
       data-testid="route-recommendation-sheet"
-      className="absolute bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl vl-elev-3 border-t border-black/[0.05] pb-[max(20px,env(safe-area-inset-bottom))] max-h-[80vh] overflow-y-auto"
+      drag="y"
+      dragControls={dragControls}
+      dragListener={false}
+      dragConstraints={{ top: snaps.full, bottom: snaps.collapsed }}
+      dragElastic={0.06}
+      dragMomentum={false}
+      onDragEnd={handleDragEnd}
+      animate={controls}
+      style={{
+        y,
+        height: `${SHEET_HEIGHT_VH * 100}vh`,
+        touchAction: 'none',
+      }}
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl vl-elev-3 border-t border-black/[0.05] flex flex-col overflow-hidden"
     >
-      <div className="flex items-start justify-between px-5 pt-4 pb-3">
-        <div className="min-w-0 flex-1">
-          <div className="vl-eyebrow text-text-secondary">Cómo llegar a</div>
-          <h2 className="text-[18px] font-bold text-text-primary truncate vl-headline">
-            {destinationLabel || 'tu destino'}
-          </h2>
+      {/* ZONA DRAG: handle + header + carousel. Solo acá se inicia el
+          drag (gracias a dragListener={false} + dragControls.start). */}
+      <motion.div
+        onPointerDown={(e) => dragControls.start(e)}
+        onTap={(_, info) => {
+          // onTap de framer solo dispara si NO hubo drag significativo
+          if (Math.abs(info.offset.y) < 5) toggleSnap();
+        }}
+        className="shrink-0 cursor-grab active:cursor-grabbing select-none"
+      >
+        {/* Visual drag handle (la barrita gris arriba) */}
+        <div className="flex justify-center pt-2.5 pb-1.5">
+          <div className="w-10 h-1.5 rounded-full bg-black/[0.18]" />
         </div>
-        <button
-          aria-label="Cerrar"
-          onClick={onClose}
-          className="cursor-pointer shrink-0 w-9 h-9 rounded-full bg-surface-raised flex items-center justify-center active:scale-95"
-        >
-          <X className="w-[16px] h-[16px] text-text-primary" strokeWidth={2.4} />
-        </button>
-      </div>
 
-      {/* Loading / error / vacío */}
-      {!userLocation && (
-        <div className="px-5 py-6 text-sm text-text-secondary text-center">
-          Necesitamos tu ubicación para calcular la mejor ruta.
+        {/* Header con título + X */}
+        <div className="flex items-start justify-between px-5 pt-1 pb-3">
+          <div className="min-w-0 flex-1">
+            <div className="vl-eyebrow text-text-secondary">Cómo llegar a</div>
+            <h2 className="text-[18px] font-bold text-text-primary truncate vl-headline">
+              {destinationLabel || 'tu destino'}
+            </h2>
+          </div>
+          <button
+            aria-label="Cerrar"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            className="cursor-pointer shrink-0 w-9 h-9 rounded-full bg-surface-raised flex items-center justify-center active:scale-95"
+          >
+            <X className="w-[16px] h-[16px] text-text-primary" strokeWidth={2.4} />
+          </button>
         </div>
-      )}
-      {userLocation && isFetching && !data && (
-        <div className="px-5 py-6 text-sm text-text-secondary text-center">
-          Calculando la mejor ruta…
-        </div>
-      )}
-      {error && (
-        <div className="px-5 py-6 text-sm text-error text-center">
-          No pudimos calcular la ruta. Intenta de nuevo.
-        </div>
-      )}
-      {data && recs.length === 0 && (
-        <div className="px-5 py-8 text-sm text-text-secondary text-center">
-          No encontramos buses convenientes a menos de 5 cuadras
-          de tu ubicación o de tu destino.
-        </div>
-      )}
 
-      {/* Primary card: routing + live bus data, todo en uno.
-          Carousel arriba para saltar entre primary y alternativas con
-          flechas laterales — el dot del color de la ruta marca cuál
-          está activa. Refleja en mapa al instante (re-commit). */}
-      {displayed && (
-        <div className="px-5">
-          <RouteCarouselNav
-            recs={recs}
-            displayed={displayed}
-            onSelect={onSelectRecommendation}
+        {/* Carousel de rutas — visible siempre, incluso en collapsed */}
+        {displayed && recs.length > 1 && (
+          <div
+            className="px-5 pb-2"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <RouteCarouselNav
+              recs={recs}
+              displayed={displayed}
+              onSelect={onSelectRecommendation}
+            />
+          </div>
+        )}
+      </motion.div>
+
+      {/* CONTENIDO SCROLLEABLE: visible solo cuando el sheet está
+          expandido. onPointerDownCapture impide que un swipe acá
+          inicie el drag del sheet (deja que el scroll natural funcione). */}
+      <div
+        className="flex-1 overflow-y-auto pb-[max(20px,env(safe-area-inset-bottom))]"
+        onPointerDownCapture={(e) => e.stopPropagation()}
+        style={{ touchAction: 'pan-y' }}
+      >
+        {/* Loading / error / vacío */}
+        {!userLocation && (
+          <div className="px-5 py-6 text-sm text-text-secondary text-center">
+            Necesitamos tu ubicación para calcular la mejor ruta.
+          </div>
+        )}
+        {userLocation && isFetching && !data && (
+          <div className="px-5 py-6 text-sm text-text-secondary text-center">
+            Calculando la mejor ruta…
+          </div>
+        )}
+        {error && (
+          <div className="px-5 py-6 text-sm text-error text-center">
+            No pudimos calcular la ruta. Intenta de nuevo.
+          </div>
+        )}
+        {data && recs.length === 0 && (
+          <div className="px-5 py-8 text-sm text-text-secondary text-center">
+            No encontramos buses convenientes a menos de 5 cuadras
+            de tu ubicación o de tu destino.
+          </div>
+        )}
+
+        {/* Primary card: routing + live bus data, todo en uno */}
+        {displayed && (
+          <div className="px-5 pt-2">
+            <PrimaryCard rec={displayed} userLocation={userLocation} />
+          </div>
+        )}
+
+        {/* Sugerencias smart del motor IA (heurísticas + LLM wording).
+            Aparecen ENTRE el primary y las alternativas — son
+            contextuales: "si esperás 3 min más...", "Transmetro también
+            te lleva...". Tap → commitea la alternativa relacionada. */}
+        {data?.smartSuggestions && data.smartSuggestions.length > 0 && (
+          <SmartSuggestionsBanner
+            suggestions={data.smartSuggestions}
+            recommendations={recs}
+            onPickAlternative={onSelectRecommendation}
           />
-          <PrimaryCard rec={displayed} userLocation={userLocation} />
-        </div>
-      )}
+        )}
 
-      {/* Sugerencias smart del motor IA (heurísticas + LLM wording).
-          Aparecen ENTRE el primary y las alternativas — son
-          contextuales: "si esperás 3 min más...", "Transmetro también
-          te lleva...". Tap → commitea la alternativa relacionada. */}
-      {data?.smartSuggestions && data.smartSuggestions.length > 0 && (
-        <SmartSuggestionsBanner
-          suggestions={data.smartSuggestions}
-          recommendations={recs}
-          onPickAlternative={onSelectRecommendation}
-        />
-      )}
-
-      {/* Alternativas */}
-      {alternatives.length > 0 && (
-        <div className="px-5 pt-4 pb-2">
-          <div className="vl-eyebrow text-text-secondary mb-2">
-            Otras opciones
+        {/* Alternativas */}
+        {alternatives.length > 0 && (
+          <div className="px-5 pt-4 pb-2">
+            <div className="vl-eyebrow text-text-secondary mb-2">
+              Otras opciones
+            </div>
+            <div className="space-y-2">
+              {alternatives.map((rec) => (
+                <AlternativeCard
+                  key={rec.rank}
+                  rec={rec}
+                  isExpanded={expandedRank === rec.rank}
+                  onToggle={() =>
+                    setExpandedRank(expandedRank === rec.rank ? null : rec.rank)
+                  }
+                  onSelect={() => onSelectRecommendation?.(rec)}
+                />
+              ))}
+            </div>
           </div>
-          <div className="space-y-2">
-            {alternatives.map((rec) => (
-              <AlternativeCard
-                key={rec.rank}
-                rec={rec}
-                isExpanded={expandedRank === rec.rank}
-                onToggle={() =>
-                  setExpandedRank(expandedRank === rec.rank ? null : rec.rank)
-                }
-                onSelect={() => onSelectRecommendation?.(rec)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
