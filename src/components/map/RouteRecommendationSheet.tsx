@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AnimatePresence,
   motion,
   useAnimation,
   useDragControls,
@@ -17,6 +18,8 @@ import {
   ArrowRight,
   Gauge,
   MapPin,
+  Sparkles,
+  Check,
 } from 'lucide-react';
 import { useRouteRecommendation } from '../../hooks/useRouteRecommendation';
 import { useBusDetails } from '../../hooks/useBusDetails';
@@ -43,8 +46,8 @@ import type { LatLng, TripRouteRecommendation } from '../../types';
  */
 type SnapState = 'collapsed' | 'half' | 'full';
 
-/** Altura visible cuando está COLLAPSED (handle + header + carousel). */
-const PEEK_HEIGHT_PX = 200;
+/** Altura visible cuando está COLLAPSED (handle + header + carousel + badge). */
+const PEEK_HEIGHT_PX = 250;
 /** Altura total del sheet como fracción del viewport. */
 const SHEET_HEIGHT_VH = 0.85;
 
@@ -242,6 +245,14 @@ export default function RouteRecommendationSheet({
             />
           </div>
         )}
+
+        {/* Badge contextual: mensaje "tu ruta óptima" en opción 1,
+            "esta opción también te sirve" en alternativas. Se anima
+            al cambiar de opción. Visible en collapsed (es el primer
+            feedback que recibe el user). */}
+        {displayed && recs.length > 1 && (
+          <RouteOptimalityBadge displayed={displayed} recs={recs} />
+        )}
       </motion.div>
 
       {/* CONTENIDO SCROLLEABLE: visible solo cuando el sheet está
@@ -397,6 +408,81 @@ function RouteCarouselNav({
         />
       </button>
     </div>
+  );
+}
+
+// ============================================================
+// RouteOptimalityBadge — chip contextual debajo del carousel
+// ============================================================
+
+/**
+ * Mensaje contextual que cambia según qué opción esté seleccionada:
+ *
+ *   Opción 1 (primary)  → "Esta es tu ruta óptima — llegas más rápido"
+ *                         (con ✨ y fondo ámbar/brand)
+ *   Opción 2+           → "Esta opción también te sirve" + diff de tiempo
+ *                         (con ✓ y fondo neutro)
+ *
+ * Se anima con AnimatePresence al cambiar de opción para que el user
+ * note el cambio sin que se sienta brusco.
+ */
+function RouteOptimalityBadge({
+  displayed,
+  recs,
+}: {
+  displayed: TripRouteRecommendation;
+  recs: TripRouteRecommendation[];
+}) {
+  const currentIdx = recs.findIndex((r) => r.bus.id === displayed.bus.id);
+  const isPrimary = currentIdx === 0;
+  const primaryRec = recs[0];
+  const diffMin = primaryRec ? displayed.totalMinutes - primaryRec.totalMinutes : 0;
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={displayed.bus.id}
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 4 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+        className="px-5 pb-2"
+      >
+        {isPrimary ? (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-50 via-amber-50 to-brand/10 border border-amber-200/80">
+            <Sparkles
+              className="w-4 h-4 text-amber-600 shrink-0"
+              strokeWidth={2.4}
+            />
+            <div className="text-[12.5px] font-semibold text-text-primary leading-tight">
+              Esta es tu ruta óptima — llegas más rápido
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-raised border border-black/[0.06]">
+            <Check
+              className="w-4 h-4 text-success shrink-0"
+              strokeWidth={2.6}
+            />
+            <div className="text-[12.5px] font-medium text-text-primary leading-tight">
+              Esta opción también te sirve
+              {diffMin > 0 && (
+                <span className="text-text-secondary font-normal">
+                  {' '}
+                  · llega {diffMin} min después
+                </span>
+              )}
+              {diffMin === 0 && (
+                <span className="text-text-secondary font-normal">
+                  {' '}
+                  · llega casi al mismo tiempo
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
