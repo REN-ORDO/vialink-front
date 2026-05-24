@@ -22,9 +22,13 @@ type Props = {
   onPickAlternative?: (alt: TripRouteRecommendation) => void;
 };
 
+// Alts ordenadas en backend por walk_to_board ASC = la primera de estas
+// es la más cercana al user, etc. Colores fuertes y distintos para que
+// no se confundan entre sí ni con el primary (color de la ruta).
 const ALT_STYLES = [
-  { color: '#F59E0B', name: 'amber' },
-  { color: '#06B6D4', name: 'cyan' },
+  { color: '#F59E0B', name: 'amber' },  // alt 1 — más cercana al user
+  { color: '#06B6D4', name: 'cyan' },   // alt 2
+  { color: '#EC4899', name: 'pink' },   // alt 3
 ] as const;
 
 /** DivIcon de la pill flotante con nombre + tiempo. */
@@ -63,7 +67,7 @@ export default function AlternativeRoutesLayer({
   if (alternatives.length === 0) return null;
   return (
     <>
-      {alternatives.slice(0, 2).map((alt, idx) => {
+      {alternatives.slice(0, 3).map((alt, idx) => {
         const style = ALT_STYLES[idx];
         const coords: [number, number][] = alt.polylineBus.map((p) => [p.lat, p.lng]);
         if (coords.length < 2) return null;
@@ -97,7 +101,7 @@ export default function AlternativeRoutesLayer({
       {/* Pills flotantes con el nombre de cada alternativa.
           Se renderizan como Markers separados porque Polyline no soporta
           children Marker en react-leaflet. */}
-      {alternatives.slice(0, 2).map((alt, idx) => {
+      {alternatives.slice(0, 3).map((alt, idx) => {
         const style = ALT_STYLES[idx];
         const mid = midpoint(alt.polylineBus);
         if (!mid) return null;

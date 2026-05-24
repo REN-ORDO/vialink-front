@@ -33,7 +33,7 @@ export function useRouteRecommendation(
         userLocation: userLocation!,
         destination: destination!,
         maxWalkingM: 500,
-        maxAlternatives: 3,
+        maxAlternatives: 5,
       }),
     enabled,
     staleTime: 10_000,
