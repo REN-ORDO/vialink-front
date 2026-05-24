@@ -38,12 +38,16 @@ function buildIcon(
         <span class="vl-bus3d-halo"></span>
         <span class="vl-bus3d-dot" style="background:${op.bodyColor};border-color:${op.dotBorder};"></span>
       `,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
+      // -25% vs 14/7. Dot LOD usa el ícono completo más chico
+      // proporcionalmente al 3D LOD.
+      iconSize: [10, 10],
+      iconAnchor: [5, 5],
     });
   }
 
-  const size = 56;
+  // -25% vs 56. Buses menos prominentes en el mapa, dejan ver mejor
+  // los polylines de rutas + el destino + los paraderos.
+  const size = 42;
   // El halo siempre está en el HTML, pero CSS lo oculta por default.
   // .vl-bus3d-marker.is-selected .vl-bus3d-halo-lg → display: block
   return L.divIcon({
