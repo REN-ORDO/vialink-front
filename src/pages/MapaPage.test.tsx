@@ -78,26 +78,23 @@ describe('MapaPage · integración geocode → buses-at-point', () => {
     );
   });
 
-  it('al clickear un bus, abre el BusDetailSheet con polyline', async () => {
+  it('al clickear un bus mock (id no-UUID), abre el sheet con mensaje de simulado', async () => {
     const user = userEvent.setup();
     renderWithProviders(<MapaPage />);
 
-    const firstBus = busesMock[0];
+    const firstBus = busesMock[0]; // id "b1" — no es UUID
     const marker = await screen.findByTestId(`mock-bus-${firstBus.id}`);
     await user.click(marker);
 
     await waitFor(
       () => {
         expect(screen.getByTestId('bus-detail-sheet')).toBeInTheDocument();
+        expect(screen.getByText(/simulado/i)).toBeInTheDocument();
       },
       { timeout: 2000 },
     );
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('mock-polyline')).toBeInTheDocument();
-      },
-      { timeout: 2000 },
-    );
+    // No debe renderizarse polyline para buses simulados (no hay data del backend)
+    expect(screen.queryByTestId('mock-polyline')).not.toBeInTheDocument();
   });
 });

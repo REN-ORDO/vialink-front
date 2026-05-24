@@ -1,5 +1,5 @@
 import { X, Navigation2, Clock3, MapPin } from 'lucide-react';
-import { useBusDetails } from '../../hooks/useBusDetails';
+import { useBusDetails, isRealBusId } from '../../hooks/useBusDetails';
 import { ApiError } from '../../lib/api';
 import type { LatLng } from '../../types';
 
@@ -32,6 +32,7 @@ export default function BusDetailSheet({
   const apiError = error instanceof ApiError ? error : null;
   const isNotFound = apiError?.status === 404;
   const isCompleted = apiError?.status === 410 || data?.status === 'COMPLETED';
+  const isMockId = !isRealBusId(busId);
 
   return (
     <div
@@ -67,19 +68,29 @@ export default function BusDetailSheet({
       </div>
 
       <div className="px-5 pt-2">
-        {isNotFound && (
+        {isMockId && (
+          <div className="py-6 text-center text-text-secondary text-sm">
+            Bus simulado — sin datos reales del backend.
+            <br />
+            <span className="text-[11px] text-text-secondary/70">
+              Conectá el WebSocket para ver buses con UUIDs reales.
+            </span>
+          </div>
+        )}
+
+        {!isMockId && isNotFound && (
           <div className="py-6 text-center text-text-secondary text-sm">
             Bus no disponible. Puede que ya haya completado su recorrido.
           </div>
         )}
 
-        {isCompleted && !isNotFound && (
+        {!isMockId && isCompleted && !isNotFound && (
           <div className="py-6 text-center text-text-secondary text-sm">
             Este bus completó su recorrido.
           </div>
         )}
 
-        {!isNotFound && !isCompleted && data && (
+        {!isMockId && !isNotFound && !isCompleted && data && (
           <>
             <div className="grid grid-cols-3 gap-2 mb-3">
               <Stat label="Velocidad" value={`${Math.round(data.speedKmh)} km/h`} />
@@ -124,7 +135,7 @@ export default function BusDetailSheet({
           </>
         )}
 
-        {isFetching && !data && !apiError && (
+        {!isMockId && isFetching && !data && !apiError && (
           <div className="py-6 text-center text-text-secondary text-sm">
             Cargando información del bus…
           </div>

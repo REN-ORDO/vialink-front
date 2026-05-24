@@ -40,13 +40,13 @@ export const handlers = [
     const hasUser =
       url.searchParams.has('lat') && url.searchParams.has('lng');
     const busId = String(params.id);
-    if (busId === 'missing-bus') {
+    if (busId === '550e8400-e29b-41d4-a716-446655440404') {
       return HttpResponse.json(
         { statusCode: 404, message: 'Bus no encontrado', error: 'Not Found' },
         { status: 404 },
       );
     }
-    if (busId === 'completed-bus') {
+    if (busId === '550e8400-e29b-41d4-a716-446655440410') {
       return HttpResponse.json(
         { statusCode: 410, message: 'Bus completo su recorrido', error: 'Gone' },
         { status: 410 },

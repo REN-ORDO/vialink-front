@@ -36,8 +36,13 @@ function tickBuses(buses: Bus[]): Bus[] {
   });
 }
 
-function nextEta(p: Paradero): number {
-  return p.rutas.reduce((min, r) => Math.min(min, r.etaMinutos), Infinity);
+function nextEta(p: Paradero): number | null {
+  if (p.rutas.length === 0) return null;
+  const min = p.rutas.reduce(
+    (m, r) => Math.min(m, r.etaMinutos),
+    Number.POSITIVE_INFINITY,
+  );
+  return Number.isFinite(min) ? min : null;
 }
 
 function nextRutaNombre(p: Paradero): string {
@@ -50,7 +55,8 @@ function formatDistance(km: number): string {
   return `${km.toFixed(1)} km`;
 }
 
-function etaColor(eta: number): string {
+function etaColor(eta: number | null): string {
+  if (eta == null) return 'text-text-secondary';
   if (eta <= 5) return 'text-success';
   if (eta <= 15) return 'text-brand';
   if (eta <= 30) return 'text-warning';
@@ -279,7 +285,7 @@ export default function MapaPage() {
                       <div
                         className={`text-[22px] font-bold tabular leading-none vl-display ${etaColor(eta)}`}
                       >
-                        {eta}
+                        {eta == null ? '—' : eta}
                       </div>
                       <div className="text-[10px] font-semibold text-text-secondary mt-0.5 tracking-wide">
                         MIN
@@ -293,9 +299,11 @@ export default function MapaPage() {
                         {p.nombre}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5 text-[12px] text-text-secondary truncate">
-                        <span className="inline-flex items-center justify-center min-w-[26px] h-[18px] px-1.5 rounded-md bg-brand/10 text-brand text-[10px] font-bold tabular tracking-wide">
-                          {ruta}
-                        </span>
+                        {ruta && (
+                          <span className="inline-flex items-center justify-center min-w-[26px] h-[18px] px-1.5 rounded-md bg-brand/10 text-brand text-[10px] font-bold tabular tracking-wide">
+                            {ruta}
+                          </span>
+                        )}
                         <span className="tabular">{formatDistance(distance)}</span>
                         <span className="text-text-secondary/50">·</span>
                         <span className="truncate">{p.direccion}</span>

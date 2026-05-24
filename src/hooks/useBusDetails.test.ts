@@ -11,7 +11,7 @@ describe('useBusDetails', () => {
   });
 
   it('consulta y mapea cuando hay busId', async () => {
-    const { result } = renderHookWithProviders(() => useBusDetails('bus-1'));
+    const { result } = renderHookWithProviders(() => useBusDetails('550e8400-e29b-41d4-a716-446655440000'));
     await waitFor(() => expect(result.current.isSuccess).toBe(true), {
       timeout: 2000,
     });
@@ -22,7 +22,7 @@ describe('useBusDetails', () => {
 
   it('incluye etaToUser cuando se pasa user location', async () => {
     const { result } = renderHookWithProviders(() =>
-      useBusDetails('bus-1', { lat: 11.0186, lng: -74.8499 }),
+      useBusDetails('550e8400-e29b-41d4-a716-446655440000', { lat: 11.0186, lng: -74.8499 }),
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true), {
       timeout: 2000,
@@ -33,7 +33,7 @@ describe('useBusDetails', () => {
 
   it('marca isError cuando el bus no existe (404)', async () => {
     const { result } = renderHookWithProviders(() =>
-      useBusDetails('missing-bus'),
+      useBusDetails('550e8400-e29b-41d4-a716-446655440404'),
     );
     await waitFor(() => expect(result.current.isError).toBe(true), {
       timeout: 2000,
