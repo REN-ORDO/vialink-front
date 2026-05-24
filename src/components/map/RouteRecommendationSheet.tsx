@@ -20,6 +20,7 @@ import {
   MapPin,
   Sparkles,
   Check,
+  AlertCircle,
 } from 'lucide-react';
 import { useRouteRecommendation } from '../../hooks/useRouteRecommendation';
 import { useBusDetails } from '../../hooks/useBusDetails';
@@ -72,10 +73,8 @@ export default function RouteRecommendationSheet({
   onClose,
   onSelectRecommendation,
 }: Props) {
-  const { data, isFetching, error } = useRouteRecommendation(
-    userLocation,
-    destination,
-  );
+  const { data, isFetching, error, isExpandedSearch } =
+    useRouteRecommendation(userLocation, destination);
   const [expandedRank, setExpandedRank] = useState<number | null>(null);
 
   // -------- Bottom sheet snap state --------
@@ -246,11 +245,13 @@ export default function RouteRecommendationSheet({
           </div>
         )}
 
-        {/* Badge contextual: mensaje "tu ruta óptima" en opción 1,
-            "esta opción también te sirve" en alternativas. Se anima
-            al cambiar de opción. Visible en collapsed (es el primer
-            feedback que recibe el user). */}
-        {displayed && recs.length > 1 && (
+        {/* Banner contextual:
+            - Si la búsqueda se expandió (no había rutas cerca y caímos
+              al fallback de 5km), mostramos un warning ámbar honesto
+              sobre que el user va a caminar más.
+            - Si no, el badge normal de "ruta óptima" / "también te sirve". */}
+        {displayed && isExpandedSearch && <ExpandedSearchBanner />}
+        {displayed && !isExpandedSearch && recs.length > 1 && (
           <RouteOptimalityBadge displayed={displayed} recs={recs} />
         )}
       </motion.div>
@@ -279,10 +280,10 @@ export default function RouteRecommendationSheet({
             No pudimos calcular la ruta. Intenta de nuevo.
           </div>
         )}
-        {data && recs.length === 0 && (
+        {data && recs.length === 0 && !isFetching && (
           <div className="px-5 py-8 text-sm text-text-secondary text-center">
-            No encontramos buses convenientes a menos de 5 cuadras
-            de tu ubicación o de tu destino.
+            No hay rutas que conecten tu ubicación con tu destino
+            en un radio de 5 km. Probá con otro destino más cercano.
           </div>
         )}
 
@@ -407,6 +408,37 @@ function RouteCarouselNav({
           strokeWidth={2.6}
         />
       </button>
+    </div>
+  );
+}
+
+// ============================================================
+// ExpandedSearchBanner — aviso ámbar para fallback de búsqueda
+// ============================================================
+
+/**
+ * Mostrado cuando el hook `useRouteRecommendation` cayó al fallback
+ * de 5 km (porque no había rutas dentro de los 1800m del backend
+ * progresivo). El user no queda bloqueado — ve las 3 más cercanas y
+ * decide si camina más.
+ *
+ * Color ámbar para señalar "atención, no es la situación normal" sin
+ * ser tan alarmante como rojo de error.
+ */
+function ExpandedSearchBanner() {
+  return (
+    <div className="px-5 pb-2">
+      <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-300">
+        <AlertCircle
+          className="w-4 h-4 text-amber-700 shrink-0 mt-0.5"
+          strokeWidth={2.4}
+        />
+        <div className="text-[12.5px] font-medium text-text-primary leading-snug">
+          Tu destino está alejado de las rutas. Estas son las opciones
+          más cercanas —{' '}
+          <span className="font-bold">vas a caminar más</span>.
+        </div>
+      </div>
     </div>
   );
 }
