@@ -6,14 +6,21 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowRight,
+  Gauge,
+  MapPin,
 } from 'lucide-react';
 import { useRouteRecommendation } from '../../hooks/useRouteRecommendation';
+import { useBusDetails } from '../../hooks/useBusDetails';
+import { useRealtime } from '../../hooks/useRealtime';
 import type { LatLng, TripRouteRecommendation } from '../../types';
 
 type Props = {
   destination: LatLng | null;
   destinationLabel?: string;
   userLocation?: LatLng;
+  /** Rec actualmente committeada (visualizada en mapa). El sheet la
+   *  muestra como primaria y carga su info en vivo del bus. */
+  committedRec?: TripRouteRecommendation | null;
   onClose: () => void;
   /** El parent decide qué hacer cuando el user selecciona una rec
    *  (ej: resaltar bus, dibujar polyline, navegar a viaje). */
@@ -24,6 +31,7 @@ export default function RouteRecommendationSheet({
   destination,
   destinationLabel,
   userLocation,
+  committedRec,
   onClose,
   onSelectRecommendation,
 }: Props) {
@@ -31,17 +39,15 @@ export default function RouteRecommendationSheet({
     userLocation,
     destination,
   );
-  const [expandedRank, setExpandedRank] = useState<number | null>(1);
+  const [expandedRank, setExpandedRank] = useState<number | null>(null);
 
   // Auto-commit del top recomendado apenas llega el primer resultado.
   // Así el mapa pinta la ruta sin que el user tenga que tocar nada.
-  // El user puede picar otra alternativa y eso re-commitea esa.
   const autoCommittedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!data || data.recommendations.length === 0) return;
     if (!onSelectRecommendation) return;
     const top = data.recommendations[0];
-    // Key estable por destino para no re-commitear en cada refetch
     const key = `${destination?.lat},${destination?.lng}`;
     if (autoCommittedKeyRef.current === key) return;
     autoCommittedKeyRef.current = key;
@@ -51,13 +57,17 @@ export default function RouteRecommendationSheet({
   if (!destination) return null;
 
   const recs = data?.recommendations ?? [];
-  const top = recs[0];
-  const alternatives = recs.slice(1);
+  // El "displayed" es el committed (si hay) o el top por default.
+  // Esto separa visualmente el "activo en mapa" de los "alternativas".
+  const displayed = committedRec ?? recs[0];
+  const alternatives = recs.filter(
+    (r) => !displayed || r.bus.id !== displayed.bus.id,
+  );
 
   return (
     <div
       data-testid="route-recommendation-sheet"
-      className="absolute bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl vl-elev-3 border-t border-black/[0.05] pb-[max(20px,env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto"
+      className="absolute bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl vl-elev-3 border-t border-black/[0.05] pb-[max(20px,env(safe-area-inset-bottom))] max-h-[80vh] overflow-y-auto"
     >
       <div className="flex items-start justify-between px-5 pt-4 pb-3">
         <div className="min-w-0 flex-1">
@@ -98,17 +108,10 @@ export default function RouteRecommendationSheet({
         </div>
       )}
 
-      {/* Recomendación principal */}
-      {top && (
+      {/* Primary card: routing + live bus data, todo en uno */}
+      {displayed && (
         <div className="px-5">
-          <TopRecommendationCard
-            rec={top}
-            isExpanded={expandedRank === top.rank}
-            onToggle={() =>
-              setExpandedRank(expandedRank === top.rank ? null : top.rank)
-            }
-            onSelect={() => onSelectRecommendation?.(top)}
-          />
+          <PrimaryCard rec={displayed} userLocation={userLocation} />
         </div>
       )}
 
@@ -138,25 +141,29 @@ export default function RouteRecommendationSheet({
 }
 
 // ============================================================
-// Sub-components
+// PrimaryCard — la rec activa con todo: header + timeline + bus live
 // ============================================================
 
-function TopRecommendationCard({
+function PrimaryCard({
   rec,
-  isExpanded,
-  onToggle,
-  onSelect,
+  userLocation,
 }: {
   rec: TripRouteRecommendation;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onSelect: () => void;
+  userLocation?: LatLng;
 }) {
+  // Suscribimos al room del bus para refresh frecuente de su data
+  useRealtime({
+    rooms: [`bus:${rec.bus.id}`],
+    enabled: true,
+  });
+  const { data: busDetails } = useBusDetails(rec.bus.id, userLocation);
+
   return (
     <div
       className="rounded-2xl border border-black/[0.06] bg-brand/[0.04] overflow-hidden"
       data-testid="rec-card-top"
     >
+      {/* Header con ruta + total + ETA principal */}
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-center gap-3">
           <span
@@ -180,41 +187,115 @@ function TopRecommendationCard({
             </div>
           </div>
           <div className="text-right">
-            <div className="vl-eyebrow text-text-secondary">Llega en</div>
+            <div className="vl-eyebrow text-text-secondary">Bus llega en</div>
             <div className="text-[15px] font-bold text-success tabular">
-              {rec.bus.waitMinutes} min
+              {busDetails?.etaToUser?.etaSeconds != null
+                ? formatEtaShort(busDetails.etaToUser.etaSeconds)
+                : `${rec.bus.waitMinutes} min`}
             </div>
           </div>
         </div>
-
-        <button
-          onClick={onSelect}
-          className="cursor-pointer mt-3 w-full h-11 rounded-full bg-text-primary text-white text-[14px] font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-          data-testid="rec-select-button"
-        >
-          Tomar este bus
-          <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
-        </button>
       </div>
 
-      {/* Detalle expandible */}
-      <button
-        onClick={onToggle}
-        aria-expanded={isExpanded}
-        className="cursor-pointer w-full px-4 py-2.5 flex items-center justify-between text-[12.5px] font-semibold text-text-secondary border-t border-black/[0.05] active:bg-surface-raised"
-      >
-        <span>{isExpanded ? 'Ocultar detalle' : 'Ver detalle del viaje'}</span>
-        {isExpanded ? (
-          <ChevronUp className="w-4 h-4" />
-        ) : (
-          <ChevronDown className="w-4 h-4" />
-        )}
-      </button>
+      {/* Timeline 3 pasos */}
+      <Timeline rec={rec} />
 
-      {isExpanded && <Timeline rec={rec} />}
+      {/* Bus en vivo — info del bus específico, refresh en tiempo real */}
+      <LiveBusInfo rec={rec} busDetails={busDetails} />
     </div>
   );
 }
+
+// ============================================================
+// LiveBusInfo — métricas en vivo del bus dentro del mismo sheet
+// ============================================================
+
+function LiveBusInfo({
+  rec,
+  busDetails,
+}: {
+  rec: TripRouteRecommendation;
+  busDetails: ReturnType<typeof useBusDetails>['data'];
+}) {
+  return (
+    <section className="border-t border-black/[0.06] px-4 py-3 bg-white/60">
+      <div className="vl-eyebrow text-text-secondary mb-2">
+        🚌 Bus en vivo · {rec.bus.plate}
+      </div>
+
+      {!busDetails ? (
+        <div className="text-[12px] text-text-secondary py-2">
+          Cargando datos del bus…
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {/* Velocidad + próximo paradero */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2">
+              <Gauge
+                className="w-3.5 h-3.5 text-text-secondary shrink-0"
+                strokeWidth={2.2}
+              />
+              <div className="min-w-0">
+                <div className="vl-eyebrow text-text-secondary">Velocidad</div>
+                <div className="text-[13px] font-bold tabular text-text-primary">
+                  {busDetails.speedKmh.toFixed(0)} km/h
+                </div>
+              </div>
+            </div>
+            {busDetails.nextLandmark && (
+              <div className="flex items-center gap-2 min-w-0">
+                <MapPin
+                  className="w-3.5 h-3.5 text-text-secondary shrink-0"
+                  strokeWidth={2.2}
+                />
+                <div className="min-w-0">
+                  <div className="vl-eyebrow text-text-secondary">
+                    Próximo paradero
+                  </div>
+                  <div className="text-[13px] font-semibold text-text-primary truncate">
+                    {busDetails.nextLandmark.name}
+                  </div>
+                  {busDetails.nextLandmark.etaSeconds != null && (
+                    <div className="text-[11px] text-text-secondary">
+                      {formatEtaShort(busDetails.nextLandmark.etaSeconds)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Progreso del recorrido */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-semibold text-text-secondary tracking-wide">
+                RECORRIDO DEL BUS
+              </span>
+              <span className="text-[11px] text-text-secondary tabular">
+                {Math.round(busDetails.stats.completedPct * 100)}% ·{' '}
+                {busDetails.stats.remainingKm.toFixed(1)} km restantes
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-black/[0.06] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${busDetails.stats.completedPct * 100}%`,
+                  backgroundColor: rec.bus.routeColor,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ============================================================
+// AlternativeCard (compact, expandible)
+// ============================================================
 
 function AlternativeCard({
   rec,
@@ -270,9 +351,10 @@ function AlternativeCard({
           <div className="px-3.5 py-3 border-t border-black/[0.05]">
             <button
               onClick={onSelect}
-              className="cursor-pointer w-full h-10 rounded-full border border-black/[0.08] text-[13.5px] font-semibold text-text-primary active:bg-surface-raised"
+              className="cursor-pointer w-full h-10 rounded-full bg-text-primary text-white text-[13.5px] font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
             >
-              Tomar este bus
+              Cambiar a este bus
+              <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
             </button>
           </div>
         </>
@@ -281,9 +363,13 @@ function AlternativeCard({
   );
 }
 
+// ============================================================
+// Timeline — 3 pasos: caminata → bus → caminata
+// ============================================================
+
 function Timeline({ rec }: { rec: TripRouteRecommendation }) {
   return (
-    <ol className="relative px-4 py-3 border-t border-black/[0.05] bg-white/60">
+    <ol className="relative px-4 py-3 border-t border-black/[0.05]">
       <span className="absolute left-[24px] top-5 bottom-5 w-px bg-brand/30" />
 
       <li className="relative pl-9 pb-2.5 flex items-start gap-3">
@@ -294,7 +380,8 @@ function Timeline({ rec }: { rec: TripRouteRecommendation }) {
             Camina {rec.walkingToBoard.blocks}
             {rec.walkingToBoard.blocks === 1 ? ' cuadra' : ' cuadras'}
             <span className="text-text-secondary font-normal">
-              ({rec.walkingToBoard.distanceM}m, ~{rec.walkingToBoard.durationMinutes} min)
+              ({rec.walkingToBoard.distanceM}m, ~
+              {rec.walkingToBoard.durationMinutes} min)
             </span>
           </div>
           <div className="text-[12px] text-text-secondary mt-0.5">
@@ -312,11 +399,12 @@ function Timeline({ rec }: { rec: TripRouteRecommendation }) {
           <div className="text-[13px] font-semibold text-text-primary">
             Toma {rec.bus.routeCode}
             <span className="text-text-secondary font-normal">
-              {' '}· espera ~{rec.bus.waitMinutes} min
+              {' '}
+              · espera ~{rec.bus.waitMinutes} min
             </span>
           </div>
           <div className="text-[12px] text-text-secondary mt-0.5">
-            Viaja {rec.bus.rideMinutes} min en bus (plate {rec.bus.plate})
+            Viaja {rec.bus.rideMinutes} min en bus
           </div>
         </div>
       </li>
@@ -339,4 +427,14 @@ function Timeline({ rec }: { rec: TripRouteRecommendation }) {
       </li>
     </ol>
   );
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function formatEtaShort(seconds: number): string {
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} s`;
+  const min = Math.round(seconds / 60);
+  return `${min} min`;
 }

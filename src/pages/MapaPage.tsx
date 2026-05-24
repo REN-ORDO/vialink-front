@@ -193,6 +193,7 @@ export default function MapaPage() {
           destination={destination}
           destinationLabel={destinationLabel}
           userLocation={userLocation}
+          committedRec={committedRec}
           onClose={() => {
             setDestination(null);
             setDestinationLabel('');
@@ -200,8 +201,9 @@ export default function MapaPage() {
           }}
           onSelectRecommendation={(rec) => {
             // Commit: dibuja polyline + paraderos resaltados + highlight
-            // del bus específico en el mapa, y abre BusDetailSheet con
-            // ETA en vivo al usuario.
+            // del bus específico en el mapa. El detalle del bus en vivo
+            // (velocidad, próximo paradero, progreso) se muestra DENTRO
+            // del mismo RouteRecommendationSheet — un solo modal.
             setCommittedRec(rec);
             setSelectedBusId(rec.bus.id);
           }}
