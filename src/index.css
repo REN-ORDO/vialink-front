@@ -170,15 +170,66 @@
   }
 
   .vl-bus3d-halo-lg {
-    width: 64px;
-    height: 64px;
-    margin-left: -32px;
-    margin-top: -32px;
-    background: rgba(30, 94, 255, 0.22);
+    width: 92px;
+    height: 92px;
+    margin-left: -46px;
+    margin-top: -46px;
+    background: rgba(255, 184, 0, 0.28);
+    border: 2px solid rgba(255, 184, 0, 0.7);
+    animation: vlPulse 1.4s ease-out infinite;
+  }
+
+  /* Bus seleccionado: drop-shadow dorado + escala ligeramente mayor
+     para que se distinga claramente entre los otros 33 buses. */
+  .vl-bus3d-marker.is-selected {
+    z-index: 1000 !important;
+  }
+
+  .vl-bus3d-marker.is-selected .vl-bus3d-wrap {
+    transform: scale(1.18);
+    transform-origin: 50% 50%;
+    transition: transform 0.25s ease-out;
   }
 
   .vl-bus3d-marker.is-selected .vl-bus3d-img {
-    filter: drop-shadow(0 0 6px rgba(30, 94, 255, 0.55));
+    filter: drop-shadow(0 0 10px rgba(255, 184, 0, 0.95))
+            drop-shadow(0 2px 6px rgba(10, 10, 10, 0.45));
+  }
+
+  /* Pequeña etiqueta "TU BUS" arriba del marker seleccionado */
+  .vl-bus3d-marker.is-selected .vl-bus3d-wrap::before {
+    content: 'TU BUS';
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1A1A1A;
+    color: #FFD23F;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    padding: 3px 7px;
+    border-radius: 9999px;
+    box-shadow: 0 2px 6px rgba(10, 10, 10, 0.4);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 10;
+  }
+
+  /* Triangulito apuntando del label hacia el bus */
+  .vl-bus3d-marker.is-selected .vl-bus3d-wrap::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #1A1A1A;
+    pointer-events: none;
+    z-index: 10;
   }
 
   .vl-user-marker-wrap {

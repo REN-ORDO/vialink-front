@@ -315,7 +315,16 @@ export default function MapaPage() {
       </BottomSheet>
       )}
 
-      <div className="absolute bottom-6 right-4 z-40 flex flex-col items-end gap-2.5">
+      {/* Floating action buttons. Cuando hay un sheet abierto, se
+          mueven al top-right (debajo del search bar) para no estorbar
+          la info del sheet que ocupa todo el bottom. */}
+      <div
+        className={`absolute right-4 z-40 flex flex-col items-end gap-2.5 transition-all duration-300 ${
+          destination || (selectedBusId && !committedRec)
+            ? 'top-[max(76px,calc(env(safe-area-inset-top)+76px))]'
+            : 'bottom-6'
+        }`}
+      >
         {hasUserLocation && (
           <button
             onClick={() => setFollowUser(true)}
