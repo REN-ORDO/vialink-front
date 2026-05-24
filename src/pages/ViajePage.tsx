@@ -1,21 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, MapPin, X } from 'lucide-react';
-import { useMap } from '@vis.gl/react-google-maps';
-import MapView from '../components/map/MapView';
-import MapPolyline from '../components/map/MapPolyline';
+import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import type { LatLngBoundsExpression, LatLngExpression } from 'leaflet';
 import ParaderoMarker from '../components/map/ParaderoMarker';
 import BusActiveMarker from '../components/map/BusActiveMarker';
 import { useViajeMock } from '../hooks/useViajeMock';
-import type { LatLng } from '../types';
 
-function FitBounds({ coords }: { coords: LatLng[] }) {
+function FitBounds({ coords }: { coords: LatLngExpression[] }) {
   const map = useMap();
   useEffect(() => {
-    if (!map || coords.length < 2) return;
-    const bounds = new google.maps.LatLngBounds();
-    for (const c of coords) bounds.extend(c);
-    map.fitBounds(bounds, 80);
+    if (coords.length < 2) return;
+    const bounds: LatLngBoundsExpression = coords as LatLngBoundsExpression;
+    map.fitBounds(bounds, { padding: [80, 80], animate: false });
   }, [coords, map]);
   return null;
 }
@@ -23,8 +21,7 @@ function FitBounds({ coords }: { coords: LatLng[] }) {
 function FollowBus({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   useEffect(() => {
-    if (!map) return;
-    map.panTo({ lat, lng });
+    map.panTo([lat, lng], { animate: true, duration: 1.2 });
   }, [lat, lng, map]);
   return null;
 }
@@ -34,25 +31,46 @@ export default function ViajePage() {
   const { viaje, routeCoords, tiempoRestanteMin, paradasRestantes, proximoParadero } =
     useViajeMock();
 
+  const polyline = useMemo<LatLngExpression[]>(
+    () => routeCoords.map((c) => [c.lat, c.lng]),
+    [routeCoords],
+  );
+
   return (
     <div className="relative flex-1 overflow-hidden bg-surface-raised">
-      <MapView
-        center={{ lat: viaje.busLat, lng: viaje.busLng }}
+      <MapContainer
+        center={[viaje.busLat, viaje.busLng]}
         zoom={14}
+        zoomControl={false}
+        attributionControl={false}
+        className="absolute inset-0 z-0"
       >
-        <FitBounds coords={routeCoords} />
-        <FollowBus lat={viaje.busLat} lng={viaje.busLng} />
-        <MapPolyline
-          positions={routeCoords}
-          color="#0A0A0A"
-          weight={9}
-          opacity={0.15}
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          subdomains={['a', 'b', 'c', 'd']}
+          maxZoom={20}
         />
-        <MapPolyline
-          positions={routeCoords}
-          color="#1E5EFF"
-          weight={6}
-          opacity={1}
+        <FitBounds coords={polyline} />
+        <FollowBus lat={viaje.busLat} lng={viaje.busLng} />
+        <Polyline
+          positions={polyline}
+          pathOptions={{
+            color: '#0A0A0A',
+            weight: 9,
+            opacity: 0.15,
+            lineCap: 'round',
+            lineJoin: 'round',
+          }}
+        />
+        <Polyline
+          positions={polyline}
+          pathOptions={{
+            color: '#1E5EFF',
+            weight: 6,
+            opacity: 1,
+            lineCap: 'round',
+            lineJoin: 'round',
+          }}
         />
         {paradasRestantes.map((p) => (
           <ParaderoMarker key={p.id} paradero={p} />
@@ -62,7 +80,7 @@ export default function ViajePage() {
           lng={viaje.busLng}
           rutaNombre={viaje.rutaNombre}
         />
-      </MapView>
+      </MapContainer>
 
       <header className="absolute top-0 left-0 right-0 z-30 px-4 pt-[max(14px,env(safe-area-inset-top))] pb-2 flex items-center gap-2.5">
         <button
