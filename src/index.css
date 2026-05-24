@@ -159,6 +159,14 @@
     animation: vlPulse 1.8s ease-out infinite;
     pointer-events: none;
     z-index: 1;
+    /* Default: oculto. Solo aparece cuando el wrapper tiene
+       .is-selected (toggle vía DOM, sin rebuild del icon). */
+    display: none;
+  }
+
+  .vl-bus3d-marker.is-selected .vl-bus3d-halo,
+  .vl-bus3d-dot-marker.is-selected .vl-bus3d-halo {
+    display: block;
   }
 
   .vl-bus3d-halo-lg {

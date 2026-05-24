@@ -79,12 +79,17 @@ export function useRealtime({
       setStatus('error');
     }
 
-    const dispatch =
-      <K extends EventName>(name: K) =>
-      (event: RealtimeEvent) => {
-        const h = handlersRef.current[name];
-        if (h) h(event);
-      };
+    // CRÍTICO: guardar las referencias a los handlers de ESTE mount
+    // para poder pasárselas a socket.off() en el cleanup. Si llamáramos
+    // socket.off(eventName) sin handler específico, borraría los
+    // listeners de TODAS las instancias de useRealtime que comparten
+    // el shared socket (incluyendo el de useAllBuses) — lo cual hacía
+    // que al cambiar selectedBusId se perdieran momentáneamente los
+    // bus_position events para todos los buses.
+    const localHandlers = new Map<
+      EventName,
+      (event: RealtimeEvent) => void
+    >();
 
     const eventNames: EventName[] = [
       'bus_position',
@@ -100,7 +105,12 @@ export function useRealtime({
     socket.on('disconnect', onDisconnect);
     socket.on('connect_error', onError);
     for (const name of eventNames) {
-      socket.on(name, dispatch(name));
+      const handler = (event: RealtimeEvent) => {
+        const h = handlersRef.current[name];
+        if (h) h(event);
+      };
+      localHandlers.set(name, handler);
+      socket.on(name, handler);
     }
 
     if (socket.connected) onConnect();
@@ -112,8 +122,10 @@ export function useRealtime({
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('connect_error', onError);
-      for (const name of eventNames) {
-        socket.off(name);
+      // Borrar SOLO los handlers de esta instancia, no los de otras
+      // instancias que comparten el shared socket.
+      for (const [name, handler] of localHandlers) {
+        socket.off(name, handler);
       }
       releaseSocket();
     };
