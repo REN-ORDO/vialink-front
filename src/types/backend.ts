@@ -544,6 +544,24 @@ export interface BackendRouteRecommendResponse {
   generated_at: string;
 }
 
+// ===== Smart suggestions (heurísticas + LLM wording) =====
+export interface BackendSmartSuggestion {
+  type:
+    | 'alternative_faster'
+    | 'alternative_less_walking'
+    | 'alternative_transmetro'
+    | 'arrive_just_in_time';
+  text: string;
+  alternative_rank: number;
+  savings_minutes: number;
+  tradeoff_minutes?: number;
+}
+
+export interface BackendRouteRecommendSmartResponse
+  extends BackendRouteRecommendResponse {
+  smart_suggestions: BackendSmartSuggestion[];
+}
+
 // ===== Walking directions (Mapbox via backend) =====
 export interface BackendWalkDirections {
   polyline: LatLng[];

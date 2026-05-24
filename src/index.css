@@ -139,8 +139,9 @@
 
   .vl-bus3d-dot {
     display: block;
-    width: 12px;
-    height: 12px;
+    /* -25% vs 12px. Proporcional a la reducción del bus 3D. */
+    width: 9px;
+    height: 9px;
     border-radius: 9999px;
     border: 2px solid #ffffff;
     box-shadow: 0 2px 6px rgba(10, 10, 10, 0.35), 0 0 0 1px rgba(10, 10, 10, 0.18);
@@ -150,10 +151,11 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 22px;
-    height: 22px;
-    margin-left: -11px;
-    margin-top: -11px;
+    /* -25% vs 22px / margin -11px. */
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    margin-top: -8px;
     border-radius: 9999px;
     background: rgba(30, 94, 255, 0.32);
     animation: vlPulse 1.8s ease-out infinite;
@@ -170,10 +172,11 @@
   }
 
   .vl-bus3d-halo-lg {
-    width: 92px;
-    height: 92px;
-    margin-left: -46px;
-    margin-top: -46px;
+    /* -25% vs 92px / margin -46px. */
+    width: 69px;
+    height: 69px;
+    margin-left: -35px;
+    margin-top: -35px;
     background: rgba(255, 184, 0, 0.28);
     border: 2px solid rgba(255, 184, 0, 0.7);
     animation: vlPulse 1.4s ease-out infinite;
@@ -417,6 +420,66 @@
     justify-content: center;
     font-size: 16px;
     box-shadow: 0 3px 10px rgba(10, 10, 10, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.95);
+  }
+
+  /* ============================================================
+   * Pills flotantes para rutas alternativas en el mapa.
+   * AlternativeRoutesLayer renderiza cada alt como polyline + esta
+   * pill en el midpoint con su nombre + tiempo. Tappable para cambiar.
+   * ============================================================ */
+  .vl-alt-route-label {
+    background: transparent !important;
+    border: none !important;
+    pointer-events: auto;
+  }
+
+  .vl-alt-route-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px 4px 7px;
+    background: #FFFFFF;
+    border: 2px solid #F59E0B; /* sobreescrito inline por color */
+    border-radius: 9999px;
+    box-shadow: 0 2px 8px rgba(10, 10, 10, 0.18),
+                0 0 0 2px rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.15s ease-out;
+  }
+
+  .vl-alt-route-pill:hover {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+
+  .vl-alt-route-pill-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
+
+  .vl-alt-route-pill-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: 0.1px;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .vl-alt-route-pill-min {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #5B6470;
+    background: #F2F4F7;
+    padding: 1px 5px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
   }
 
   .vl-shimmer {

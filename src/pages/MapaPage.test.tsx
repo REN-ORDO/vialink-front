@@ -1,8 +1,54 @@
 import { describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../test/utils';
 import { busesMock } from '../lib/mockData';
+
+// Google Maps JS SDK no carga en jsdom — mockeamos el loader + los
+// hooks de Places para que AddressSearchBar funcione en el test.
+vi.mock('@react-google-maps/api', () => ({
+  useJsApiLoader: () => ({ isLoaded: true, loadError: null }),
+}));
+vi.mock('../hooks/useGeolocation', () => ({
+  useGeolocation: () => ({
+    latitude: null,
+    longitude: null,
+    error: null,
+    loading: false,
+  }),
+}));
+vi.mock('../hooks/usePlacesAutocomplete', () => ({
+  usePlacesAutocomplete: () => {
+    const [query, setQuery] = useState('');
+    const predictions =
+      query.length >= 3
+        ? [
+            {
+              placeId: 'mock-uninorte-id',
+              mainText: 'Universidad del Norte',
+              secondaryText: 'Barranquilla, Atlántico',
+              description:
+                'Universidad del Norte, Barranquilla, Atlántico',
+            },
+          ]
+        : [];
+    return {
+      query,
+      predictions,
+      isSearching: false,
+      error: null,
+      handleInputChange: setQuery,
+      getPlaceDetails: async () => ({
+        name: 'Universidad del Norte',
+        address: 'Km 5 Vía Puerto Colombia, Uninorte, Barranquilla',
+        lat: 10.9876,
+        lng: -74.7965,
+      }),
+      clearPredictions: () => setQuery(''),
+    };
+  },
+}));
 
 vi.mock('../components/map/MapView', () => ({
   default: ({ children }: { children?: React.ReactNode }) => (
