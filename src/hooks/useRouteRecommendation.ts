@@ -1,6 +1,14 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dataSource } from '../lib/dataSource';
 import type { LatLng } from '../types';
+
+/**
+ * Caminata máxima razonable por tramo (board o alight) cuando estamos
+ * en modo fallback. 1500m ≈ 15 cuadras ≈ 18 min caminando. Más que eso
+ * el bus deja de ser útil: el user mejor camina/taxi todo el viaje.
+ */
+const MAX_LEG_WALK_FALLBACK_M = 1500;
 
 /**
  * Pide al backend qué bus tomar para ir de userLocation a destination.
@@ -62,9 +70,10 @@ export function useRouteRecommendation(
     normalQuery.isSuccess &&
     (normalQuery.data?.recommendations.length ?? 0) === 0;
 
-  // QUERY FALLBACK — radio enorme (5000m ≈ 60 cuadras).
-  // El user va a caminar más, pero al menos ve opciones. Pedimos
-  // solo 3 alts porque a esa distancia más es spam visual.
+  // QUERY FALLBACK — radio moderado (2000m ≈ 25 cuadras, máximo
+  // razonable para caminar). Más allá de eso ni el user más
+  // dispuesto camina. Pedimos solo 3 alts porque a esa distancia
+  // más es spam visual.
   const fallbackQuery = useQuery({
     queryKey: [
       'route-recommend-smart',
@@ -78,7 +87,7 @@ export function useRouteRecommendation(
       dataSource.recommendRouteSmart({
         userLocation: userLocation!,
         destination: destination!,
-        maxWalkingM: 5_000,
+        maxWalkingM: 2_000,
         maxAlternatives: 3,
       }),
     enabled: enabled && primaryReturnedEmpty,
@@ -93,14 +102,30 @@ export function useRouteRecommendation(
     normalQuery.isFetching ||
     (primaryReturnedEmpty && fallbackQuery.isFetching);
 
+  // Filtramos las recs del fallback para sacar las "absurdas" — recs
+  // donde el user tendría que caminar >1500m en cualquier tramo (board
+  // o alight). Si el bus te deja a 24 cuadras del destino, no es una
+  // ruta útil, es spam visual + UX engañoso ("vas a caminar más" no
+  // captura "vas a caminar 2.4 km").
+  const filteredFallbackData = useMemo(() => {
+    if (!fallbackQuery.data) return undefined;
+    const filtered = fallbackQuery.data.recommendations.filter(
+      (r) =>
+        r.walkingToBoard.distanceM <= MAX_LEG_WALK_FALLBACK_M &&
+        r.walkingFromAlight.distanceM <= MAX_LEG_WALK_FALLBACK_M,
+    );
+    return { ...fallbackQuery.data, recommendations: filtered };
+  }, [fallbackQuery.data]);
+
   // Decisión final de qué data exponer:
   //   - Si primaria tiene recs → primaria (NO es expanded)
-  //   - Si primaria vacía + fallback tiene recs → fallback (SÍ es expanded)
-  //   - Resto (ambas vacías, error, loading inicial) → primaria
+  //   - Si primaria vacía + fallback filtrado tiene recs → fallback
+  //     (SÍ es expanded — vas a caminar más, pero razonable)
+  //   - Resto (ambas vacías o todo filtrado fuera, error, loading) → primaria
   const primaryHasRecs =
     (normalQuery.data?.recommendations.length ?? 0) > 0;
   const fallbackHasRecs =
-    (fallbackQuery.data?.recommendations.length ?? 0) > 0;
+    (filteredFallbackData?.recommendations.length ?? 0) > 0;
 
   if (primaryHasRecs) {
     return {
@@ -113,15 +138,15 @@ export function useRouteRecommendation(
 
   if (primaryReturnedEmpty && fallbackHasRecs) {
     return {
-      data: fallbackQuery.data,
+      data: filteredFallbackData,
       isFetching: fallbackQuery.isFetching,
       error: fallbackQuery.error,
       isExpandedSearch: true as const,
     };
   }
 
-  // Loading inicial o ambas vacías: devolvemos primaria con su isFetching
-  // ya combinado (para que el sheet sepa que aún hay un fallback en curso).
+  // Loading inicial, ambas vacías, o fallback filtró todo a 0:
+  // devolvemos primaria con su isFetching ya combinado.
   return {
     data: normalQuery.data,
     isFetching,

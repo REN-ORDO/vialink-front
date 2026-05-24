@@ -284,9 +284,15 @@ export default function RouteRecommendationSheet({
           </div>
         )}
         {data && recs.length === 0 && !isFetching && (
-          <div className="px-5 py-8 text-sm text-text-secondary text-center">
-            No hay rutas que conecten tu ubicación con tu destino
-            en un radio de 5 km. Probá con otro destino más cercano.
+          <div className="px-5 py-8 text-center space-y-2">
+            <div className="text-[15px] font-semibold text-text-primary">
+              Sin cobertura de bus
+            </div>
+            <div className="text-[13px] text-text-secondary leading-snug max-w-xs mx-auto">
+              Tu destino está fuera del área cubierta por las rutas
+              cercanas. Te conviene <strong>caminar</strong> si está
+              cerca, o tomar un <strong>taxi/Uber</strong>.
+            </div>
           </div>
         )}
 
@@ -437,9 +443,9 @@ function ExpandedSearchBanner() {
           strokeWidth={2.4}
         />
         <div className="text-[12.5px] font-medium text-text-primary leading-snug">
-          Tu destino está alejado de las rutas. Estas son las opciones
-          más cercanas —{' '}
-          <span className="font-bold">vas a caminar más</span>.
+          No hay rutas frecuentes cerca de tu destino. Estas son las
+          opciones más cercanas — vas a{' '}
+          <span className="font-bold">caminar entre 10 y 15 cuadras</span>.
         </div>
       </div>
     </div>
