@@ -20,8 +20,15 @@ export function useBusDetails(busId: string | null, userLocation?: LatLng) {
     queryKey: ['bus-details', busId, userLocation?.lat, userLocation?.lng],
     queryFn: () => dataSource.getBusDetails(busId!, userLocation),
     enabled: callable,
+    // staleTime corto + refetch cada 5s = el "Bus llega en X min" del
+    // PrimaryCard se actualiza solo mientras el sheet está abierto.
+    // El backend recalcula etaToUser en cada request basado en la
+    // posición actual del bus (que actualiza el BusEngine cada 250ms).
+    // Antes refetchInterval: false → el ETA se quedaba congelado en
+    // el primer valor que se vio.
     staleTime: 1_000,
-    refetchInterval: false,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: false,
     retry: false,
   });
 }

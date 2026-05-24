@@ -226,8 +226,6 @@ export default function MapaPage() {
             label="Cerca de mí"
             icon={<Navigation2 className="w-3 h-3" strokeWidth={2.6} />}
           />
-          <Pill label="Frecuentes" />
-          <Pill label="Favoritos" />
         </div>
       </div>
 
