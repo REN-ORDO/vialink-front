@@ -1,6 +1,7 @@
 import { Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { useWalkingRoute } from '../../hooks/useWalkingRoute';
+import { useBusDetails } from '../../hooks/useBusDetails';
 import type { LatLng, TripRouteRecommendation } from '../../types';
 
 /**
@@ -68,6 +69,14 @@ export default function RouteVisualizer({
   const alight = recommendation.walkingFromAlight.paradero;
   const busPolyline = recommendation.polylineBus;
 
+  // Recorrido COMPLETO del corridor de la ruta. Lo trae useBusDetails
+  // del backend (polyline del corridor completo). Lo mostramos en ámbar
+  // discontinuo para que el user vea de dónde viene y a dónde va el bus
+  // — distinto del segmento "tu trayecto" (color de ruta, sólido).
+  const { data: busDetails } = useBusDetails(recommendation.bus.id);
+  const fullCorridorCoords: [number, number][] =
+    busDetails?.polyline?.map((p) => [p.lat, p.lng]) ?? [];
+
   // Caminatas reales (siguen calles). Mapbox bajo el hood en backend.
   // Mientras llegan, mostramos línea recta como placeholder.
   const walkToBoardQ = useWalkingRoute(userLocation, {
@@ -94,6 +103,24 @@ export default function RouteVisualizer({
 
   return (
     <>
+      {/* Recorrido COMPLETO del bus (de dónde viene + a dónde va).
+          Va PRIMERO en el render para que queden debajo de las otras
+          polylines. Color ámbar discontinuo — distinto del color de
+          la ruta (que se usa para "tu segmento") y del gris (caminata). */}
+      {fullCorridorCoords.length > 1 && (
+        <Polyline
+          positions={fullCorridorCoords}
+          pathOptions={{
+            color: '#F59E0B',
+            weight: 3.5,
+            opacity: 0.55,
+            dashArray: '12 7',
+            lineCap: 'round',
+            lineJoin: 'round',
+          }}
+        />
+      )}
+
       {/* Walking: user → board (caminata real siguiendo calles) */}
       <Polyline
         positions={walkToBoardCoords}
@@ -107,7 +134,7 @@ export default function RouteVisualizer({
         }}
       />
 
-      {/* Bus segment con outline blanco (look elevado) */}
+      {/* Bus segment con outline blanco (look elevado) — TU TRAMO */}
       {busSegmentCoords.length > 1 && (
         <>
           <Polyline
