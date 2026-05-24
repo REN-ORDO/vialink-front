@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles, Navigation2, LocateFixed, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Polyline } from 'react-leaflet';
 import MapView from '../components/map/MapView';
 import ParaderoMarker from '../components/map/ParaderoMarker';
 import Bus3DMarker from '../components/map/buses3d/Bus3DMarker';
@@ -10,9 +11,12 @@ import UserLocationMarker, {
 } from '../components/map/UserLocationMarker';
 import BottomSheet from '../components/ui/BottomSheet';
 import AddressSearchBar from '../components/ui/AddressSearchBar';
+import BusDetailSheet from '../components/map/BusDetailSheet';
 import { busesMock, BARRANQUILLA_CENTER } from '../lib/mockData';
 import { useParaderos } from '../hooks/useParaderos';
 import { useBusesAtPoint } from '../hooks/useBusesAtPoint';
+import { useBusDetails } from '../hooks/useBusDetails';
+import { useRealtime } from '../hooks/useRealtime';
 import { useLocation, distanceKm } from '../hooks/useLocation';
 import { useAppStore } from '../store/useAppStore';
 import type { Bus, LatLng, Paradero } from '../types';
@@ -58,6 +62,7 @@ export default function MapaPage() {
   const [buses, setBuses] = useState<Bus[]>(busesMock);
   const [tappedLocation, setTappedLocation] = useState<LatLng | null>(null);
   const [tappedLabel, setTappedLabel] = useState<string>('');
+  const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
   const { data: paraderos, isLoading } = useParaderos();
   const { data: busesAtPoint, isFetching: isFetchingBusesAtPoint } =
     useBusesAtPoint(tappedLocation);
@@ -69,6 +74,15 @@ export default function MapaPage() {
     lat != null && lng != null && (locStatus === 'granted' || locStatus === 'idle');
   const userLocation: LatLng | undefined =
     lat != null && lng != null ? { lat, lng } : undefined;
+
+  // Bus details + polyline cuando hay un bus seleccionado
+  const { data: busDetails } = useBusDetails(selectedBusId, userLocation);
+
+  // Suscribir al room del bus para recibir updates en vivo
+  useRealtime({
+    rooms: selectedBusId ? [`bus:${selectedBusId}`] : [],
+    enabled: !!selectedBusId,
+  });
 
   useEffect(() => {
     const id = setInterval(() => setBuses((prev) => tickBuses(prev)), 1800);
@@ -96,8 +110,28 @@ export default function MapaPage() {
         {(paraderos ?? []).map((p) => (
           <ParaderoMarker key={p.id} paradero={p} />
         ))}
+        {busDetails && busDetails.polyline.length > 1 && (
+          <Polyline
+            positions={busDetails.polyline.map((p) => [p.lat, p.lng])}
+            pathOptions={{
+              color: busDetails.route.color,
+              weight: 5,
+              opacity: 0.85,
+              lineCap: 'round',
+              lineJoin: 'round',
+            }}
+          />
+        )}
         {buses.map((b) => (
-          <Bus3DMarker key={b.id} bus={b} />
+          <Bus3DMarker
+            key={b.id}
+            bus={b}
+            onClick={(id) => {
+              setSelectedBusId(id);
+              setTappedLocation(null);
+            }}
+            isSelected={selectedBusId === b.id}
+          />
         ))}
         <DisableFollowOnDrag onUserDrag={() => setFollowUser(false)} />
         {hasUserLocation && lat != null && lng != null && (
@@ -116,6 +150,7 @@ export default function MapaPage() {
             onSelect={(s) => {
               setTappedLocation(s.location);
               setTappedLabel(s.label);
+              setSelectedBusId(null);
             }}
           />
         </div>
@@ -299,6 +334,12 @@ export default function MapaPage() {
           <span className="text-[14px] font-semibold tracking-tight">Preguntar</span>
         </button>
       </div>
+
+      <BusDetailSheet
+        busId={selectedBusId}
+        userLocation={userLocation}
+        onClose={() => setSelectedBusId(null)}
+      />
     </div>
   );
 }

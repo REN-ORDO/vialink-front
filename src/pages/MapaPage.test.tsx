@@ -2,18 +2,50 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../test/utils';
+import { busesMock } from '../lib/mockData';
 
 vi.mock('../components/map/MapView', () => ({
   default: ({ children }: { children?: React.ReactNode }) => (
     <div data-testid="mock-mapview">{children}</div>
   ),
 }));
+vi.mock('react-leaflet', async () => {
+  const actual = await vi.importActual<typeof import('react-leaflet')>(
+    'react-leaflet',
+  );
+  return {
+    ...actual,
+    Polyline: ({ positions }: { positions: [number, number][] }) => (
+      <div
+        data-testid="mock-polyline"
+        data-points={String(positions.length)}
+      />
+    ),
+  };
+});
 vi.mock('../components/map/ParaderoMarker', () => ({ default: () => null }));
-vi.mock('../components/map/buses3d/Bus3DMarker', () => ({ default: () => null }));
+vi.mock('../components/map/buses3d/Bus3DMarker', () => ({
+  default: ({
+    bus,
+    onClick,
+  }: {
+    bus: { id: string };
+    onClick?: (id: string) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid={`mock-bus-${bus.id}`}
+      onClick={() => onClick?.(bus.id)}
+    />
+  ),
+}));
 vi.mock('../components/map/UserLocationMarker', () => ({
   default: () => null,
   FollowUser: () => null,
   DisableFollowOnDrag: () => null,
+}));
+vi.mock('../hooks/useRealtime', () => ({
+  useRealtime: () => ({ status: 'idle' }),
 }));
 
 import MapaPage from './MapaPage';
@@ -41,6 +73,29 @@ describe('MapaPage · integración geocode → buses-at-point', () => {
     await waitFor(
       () => {
         expect(screen.getByTestId('buses-at-point-sheet')).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
+  });
+
+  it('al clickear un bus, abre el BusDetailSheet con polyline', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MapaPage />);
+
+    const firstBus = busesMock[0];
+    const marker = await screen.findByTestId(`mock-bus-${firstBus.id}`);
+    await user.click(marker);
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('bus-detail-sheet')).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('mock-polyline')).toBeInTheDocument();
       },
       { timeout: 2000 },
     );
