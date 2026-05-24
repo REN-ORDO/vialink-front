@@ -362,6 +362,26 @@ export type TripRouteRecommendResponse = {
   generatedAt: string;
 };
 
+/**
+ * Sugerencia smart generada por el motor IA del backend.
+ * Texto en español natural + metadata para tracking/UI.
+ */
+export type SmartSuggestion = {
+  type:
+    | 'alternative_faster'
+    | 'alternative_less_walking'
+    | 'alternative_transmetro'
+    | 'arrive_just_in_time';
+  text: string;
+  alternativeRank: number;
+  savingsMinutes: number;
+  tradeoffMinutes?: number;
+};
+
+export type TripRouteRecommendSmartResponse = TripRouteRecommendResponse & {
+  smartSuggestions: SmartSuggestion[];
+};
+
 export type ApiErrorShape = {
   statusCode: number;
   message: string;

@@ -15,6 +15,8 @@ import type {
   GeocodeSuggestion,
   TripRouteRecommendation,
   TripRouteRecommendResponse,
+  TripRouteRecommendSmartResponse,
+  SmartSuggestion,
 } from '../types';
 import type {
   BackendLandmarkDetail,
@@ -33,6 +35,8 @@ import type {
   BackendGeocodeResult,
   BackendRouteRecommendation,
   BackendRouteRecommendResponse,
+  BackendRouteRecommendSmartResponse,
+  BackendSmartSuggestion,
 } from '../types/backend';
 
 // ============================================================
@@ -417,5 +421,26 @@ export function backendRouteRecommendResponseToTripRouteRec(
     destination: r.destination,
     recommendations: r.recommendations.map(backendRouteRecToTripRouteRec),
     generatedAt: r.generated_at,
+  };
+}
+
+export function backendSmartSuggestionToFront(
+  s: BackendSmartSuggestion,
+): SmartSuggestion {
+  return {
+    type: s.type,
+    text: s.text,
+    alternativeRank: s.alternative_rank,
+    savingsMinutes: s.savings_minutes,
+    tradeoffMinutes: s.tradeoff_minutes,
+  };
+}
+
+export function backendRouteRecommendSmartToTripRouteRec(
+  r: BackendRouteRecommendSmartResponse,
+): TripRouteRecommendSmartResponse {
+  return {
+    ...backendRouteRecommendResponseToTripRouteRec(r),
+    smartSuggestions: r.smart_suggestions.map(backendSmartSuggestionToFront),
   };
 }

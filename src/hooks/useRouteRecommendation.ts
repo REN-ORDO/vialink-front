@@ -22,14 +22,14 @@ export function useRouteRecommendation(
 
   return useQuery({
     queryKey: [
-      'route-recommend',
+      'route-recommend-smart',
       userLocation?.lat,
       userLocation?.lng,
       destination?.lat,
       destination?.lng,
     ],
     queryFn: () =>
-      dataSource.recommendRoute({
+      dataSource.recommendRouteSmart({
         userLocation: userLocation!,
         destination: destination!,
         maxWalkingM: 500,

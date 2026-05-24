@@ -12,6 +12,7 @@ import {
 import { useRouteRecommendation } from '../../hooks/useRouteRecommendation';
 import { useBusDetails } from '../../hooks/useBusDetails';
 import { useRealtime } from '../../hooks/useRealtime';
+import SmartSuggestionsBanner from './SmartSuggestionsBanner';
 import type { LatLng, TripRouteRecommendation } from '../../types';
 
 type Props = {
@@ -113,6 +114,18 @@ export default function RouteRecommendationSheet({
         <div className="px-5">
           <PrimaryCard rec={displayed} userLocation={userLocation} />
         </div>
+      )}
+
+      {/* Sugerencias smart del motor IA (heurísticas + LLM wording).
+          Aparecen ENTRE el primary y las alternativas — son
+          contextuales: "si esperás 3 min más...", "Transmetro también
+          te lleva...". Tap → commitea la alternativa relacionada. */}
+      {data?.smartSuggestions && data.smartSuggestions.length > 0 && (
+        <SmartSuggestionsBanner
+          suggestions={data.smartSuggestions}
+          recommendations={recs}
+          onPickAlternative={onSelectRecommendation}
+        />
       )}
 
       {/* Alternativas */}

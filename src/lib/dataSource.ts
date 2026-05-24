@@ -21,6 +21,7 @@ import {
   backendAssistantMessageToChatMessage,
   backendGeocodeResultToSuggestion,
   backendRouteRecommendResponseToTripRouteRec,
+  backendRouteRecommendSmartToTripRouteRec,
 } from './mappers';
 import type {
   AlternativeRoute,
@@ -37,6 +38,7 @@ import type {
   RouteRecommendation,
   Trip,
   TripRouteRecommendResponse,
+  TripRouteRecommendSmartResponse,
   User,
   WaitSession,
 } from '../types';
@@ -52,6 +54,7 @@ import type {
   BackendBusListResponse,
   BackendBusesAtPointResponse,
   BackendRouteRecommendResponse,
+  BackendRouteRecommendSmartResponse,
   BackendWalkDirections,
   BackendCorridorGeoJSON,
   BackendFavoritesResponse,
@@ -317,6 +320,39 @@ export const dataSource = {
       },
     );
     return backendRouteRecommendResponseToTripRouteRec(raw);
+  },
+
+  /**
+   * Igual que recommendRoute pero con sugerencias smart (heurísticas + LLM)
+   * agregadas en `smartSuggestions`. Usa el endpoint /routing/recommend-smart.
+   *
+   * Costo extra: 1 call a Claude Haiku (~$0.002) por request.
+   */
+  async recommendRouteSmart(input: {
+    userLocation: LatLng;
+    destination: LatLng;
+    maxWalkingM?: number;
+    maxAlternatives?: number;
+  }): Promise<TripRouteRecommendSmartResponse> {
+    if (USE_MOCKS) {
+      return {
+        userLocation: input.userLocation,
+        destination: input.destination,
+        recommendations: [],
+        smartSuggestions: [],
+        generatedAt: new Date().toISOString(),
+      };
+    }
+    const raw = await api.post<BackendRouteRecommendSmartResponse>(
+      '/routing/recommend-smart',
+      {
+        user_location: input.userLocation,
+        destination: input.destination,
+        max_walking_m: input.maxWalkingM ?? 500,
+        max_alternatives: input.maxAlternatives ?? 3,
+      },
+    );
+    return backendRouteRecommendSmartToTripRouteRec(raw);
   },
 
   /**
