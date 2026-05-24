@@ -315,41 +315,62 @@ export default function MapaPage() {
       </BottomSheet>
       )}
 
-      {/* Floating action buttons. Cuando hay un sheet abierto, se
-          mueven al top-right (debajo del search bar) para no estorbar
-          la info del sheet que ocupa todo el bottom. */}
-      <div
-        className={`absolute right-4 z-40 flex flex-col items-end gap-2.5 transition-all duration-300 ${
-          destination || (selectedBusId && !committedRec)
-            ? 'top-[max(76px,calc(env(safe-area-inset-top)+76px))]'
-            : 'bottom-6'
-        }`}
-      >
-        {hasUserLocation && (
-          <button
-            onClick={() => setFollowUser(true)}
-            aria-label={followUser ? 'Siguiendo tu ubicación' : 'Centrar en mi ubicación'}
-            className={`cursor-pointer w-12 h-12 rounded-full flex items-center justify-center vl-elev-3 active:scale-[0.95] transition-all border ${
-              followUser
-                ? 'bg-brand text-white border-brand'
-                : 'bg-white text-text-primary border-black/[0.06]'
+      {(() => {
+        const sheetOpen = !!destination || (!!selectedBusId && !committedRec);
+        return (
+          <div
+            className={`absolute right-3 z-40 flex flex-col items-end gap-2 transition-all duration-300 ${
+              sheetOpen
+                ? // Sheet abierto: en el gap entre pills (~100px) y top
+                  // del sheet (~20vh). Buttons más compactos para no
+                  // robar atención al sheet.
+                  'top-[max(108px,calc(env(safe-area-inset-top)+108px))]'
+                : // Default: bottom-right grandes (como Uber/Cabify)
+                  'bottom-6 right-4'
             }`}
           >
-            <LocateFixed
-              className={`w-[18px] h-[18px] ${followUser ? 'text-white' : 'text-brand'}`}
-              strokeWidth={2.4}
-            />
-          </button>
-        )}
-        <button
-          onClick={() => navigate('/asistente')}
-          aria-label="Abrir asistente"
-          className="cursor-pointer group flex items-center gap-2 pl-3.5 pr-4 h-14 rounded-full bg-text-primary text-white vl-elev-3 active:scale-[0.97] transition-transform"
-        >
-          <Sparkles className="w-[18px] h-[18px] text-white" strokeWidth={2.4} />
-          <span className="text-[14px] font-semibold tracking-tight">Preguntar</span>
-        </button>
-      </div>
+            {hasUserLocation && (
+              <button
+                onClick={() => setFollowUser(true)}
+                aria-label={
+                  followUser
+                    ? 'Siguiendo tu ubicación'
+                    : 'Centrar en mi ubicación'
+                }
+                className={`cursor-pointer rounded-full flex items-center justify-center vl-elev-3 active:scale-[0.95] transition-all border ${
+                  sheetOpen ? 'w-9 h-9' : 'w-12 h-12'
+                } ${
+                  followUser
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-white text-text-primary border-black/[0.06]'
+                }`}
+              >
+                <LocateFixed
+                  className={`${sheetOpen ? 'w-[14px] h-[14px]' : 'w-[18px] h-[18px]'} ${followUser ? 'text-white' : 'text-brand'}`}
+                  strokeWidth={2.4}
+                />
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/asistente')}
+              aria-label="Abrir asistente"
+              className={`cursor-pointer flex items-center gap-1.5 rounded-full bg-text-primary text-white vl-elev-3 active:scale-[0.97] transition-all ${
+                sheetOpen ? 'h-9 pl-2.5 pr-3' : 'h-14 pl-3.5 pr-4 gap-2'
+              }`}
+            >
+              <Sparkles
+                className={`text-white ${sheetOpen ? 'w-[14px] h-[14px]' : 'w-[18px] h-[18px]'}`}
+                strokeWidth={2.4}
+              />
+              <span
+                className={`font-semibold tracking-tight ${sheetOpen ? 'text-[12px]' : 'text-[14px]'}`}
+              >
+                Preguntar
+              </span>
+            </button>
+          </div>
+        );
+      })()}
 
       {/* BusDetailSheet SOLO se muestra cuando NO hay una recomendación
           de ruta activa. Si hay rec, el RouteRecommendationSheet es la
