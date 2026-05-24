@@ -363,17 +363,18 @@ export const dataSource = {
   },
 
   /**
-   * Búsqueda de lugares (autocomplete).
+   * Búsqueda de lugares (autocomplete) — MERGE de 2 fuentes:
    *
-   * Si VITE_GOOGLE_MAPS_API_KEY está configurada, usa Google Places API NEW:
-   *   - Mejor cobertura de direcciones colombianas que Mapbox
-   *   - Predicciones rápidas con `placeId` (lat/lng se resuelve en click via
-   *     `resolvePlace`)
-   *   - sessionToken bundlea autocompletes + 1 detalle en una sola sesión
-   *     facturable
+   * 1. Internal landmarks (NUESTRA DB): Buenavista, Plaza de la Paz,
+   *    Uninorte, hospitales, etc. Cobertura curada de Barranquilla.
+   *    Aparece PRIMERO porque es lo que el usuario más probablemente
+   *    busca y Google a veces no tiene o devuelve mal.
    *
-   * Sin la key, cae al backend `/geocode` (Mapbox) y mapea las respuestas
-   * a `PlacePrediction` con `location` ya resuelta (eager).
+   * 2. Google Places API (NEW) / o backend /geocode (Mapbox) si no hay
+   *    Google key. Para todo lo demás (direcciones, lugares no curados).
+   *
+   * Las predicciones internas vienen con `location` ya resuelta —
+   * resolvePlace las pasa directo sin llamada extra de red.
    */
   async searchPlaces(
     query: string,
@@ -382,28 +383,63 @@ export const dataSource = {
     const trimmed = query.trim();
     if (trimmed.length < 3) return [];
 
+    const limit = opts.limit ?? 5;
+
+    // 1) Internal landmarks en paralelo con la búsqueda externa
+    const landmarksPromise = this.searchLandmarks(trimmed, limit)
+      .catch((err) => {
+        console.warn('searchLandmarks falló:', err);
+        return [] as Awaited<ReturnType<typeof this.searchLandmarks>>;
+      });
+
+    let externalPromise: Promise<PlacePrediction[]>;
     if (hasGooglePlacesKey() && !USE_MOCKS) {
-      try {
-        return await autocompletePlaces(trimmed, {
-          sessionToken: opts.sessionToken,
-          proximity: opts.proximity,
-        });
-      } catch (err) {
-        console.warn('Google Places autocomplete falló, fallback:', err);
-        // cae al backend abajo
-      }
+      externalPromise = autocompletePlaces(trimmed, {
+        sessionToken: opts.sessionToken,
+        proximity: opts.proximity,
+      }).catch((err) => {
+        console.warn('Google Places autocomplete falló:', err);
+        return [];
+      });
+    } else {
+      externalPromise = this.geocode(trimmed, opts.proximity, limit)
+        .then((suggestions) =>
+          suggestions.map((s) => ({
+            id: s.id,
+            label: s.label,
+            fullAddress: s.fullAddress,
+            category: s.category,
+            location: s.location,
+          })),
+        )
+        .catch(() => []);
     }
 
-    // Fallback: backend /geocode (Mapbox) o mocks. Devolvemos predicciones
-    // con location eager-resuelta — no requieren llamada extra de details.
-    const suggestions = await this.geocode(trimmed, opts.proximity, opts.limit ?? 5);
-    return suggestions.map((s) => ({
-      id: s.id,
-      label: s.label,
-      fullAddress: s.fullAddress,
-      category: s.category,
-      location: s.location, // Mapbox/mocks traen location de una vez
+    const [landmarks, external] = await Promise.all([
+      landmarksPromise,
+      externalPromise,
+    ]);
+
+    // Mapear landmarks → PlacePrediction (con location ya resuelta)
+    const fromLandmarks: PlacePrediction[] = landmarks.map((lm) => ({
+      id: `lm:${lm.id}`,
+      label: lm.name,
+      fullAddress: `${lm.name} · ${lm.type.toLowerCase()}`,
+      category: lm.type.toLowerCase(),
+      location: lm.location,
     }));
+
+    // Dedup por nombre normalizado: si "Buenavista" sale en ambos,
+    // mantenemos el interno (más confiable para Colombia).
+    const seen = new Set<string>(
+      fromLandmarks.map((l) => l.label.trim().toLowerCase()),
+    );
+    const dedupedExternal = external.filter(
+      (p) => !seen.has(p.label.trim().toLowerCase()),
+    );
+
+    // Internos primero, luego externos, capped al limit total
+    return [...fromLandmarks, ...dedupedExternal].slice(0, Math.max(limit, 8));
   },
 
   /**

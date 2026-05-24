@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   X,
   Footprints,
@@ -32,6 +32,21 @@ export default function RouteRecommendationSheet({
     destination,
   );
   const [expandedRank, setExpandedRank] = useState<number | null>(1);
+
+  // Auto-commit del top recomendado apenas llega el primer resultado.
+  // Así el mapa pinta la ruta sin que el user tenga que tocar nada.
+  // El user puede picar otra alternativa y eso re-commitea esa.
+  const autoCommittedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!data || data.recommendations.length === 0) return;
+    if (!onSelectRecommendation) return;
+    const top = data.recommendations[0];
+    // Key estable por destino para no re-commitear en cada refetch
+    const key = `${destination?.lat},${destination?.lng}`;
+    if (autoCommittedKeyRef.current === key) return;
+    autoCommittedKeyRef.current = key;
+    onSelectRecommendation(top);
+  }, [data, destination, onSelectRecommendation]);
 
   if (!destination) return null;
 
