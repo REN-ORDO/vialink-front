@@ -32,7 +32,12 @@ export function useRouteRecommendation(
       dataSource.recommendRouteSmart({
         userLocation: userLocation!,
         destination: destination!,
-        maxWalkingM: 500,
+        // 700m = ~9 cuadras. Suficientemente generoso para que casi
+        // siempre haya 2-3 alts (varias rutas pasan en este radio en
+        // BAQ), pero sin pedirle al user que camine 1+ km. Las alts
+        // se ordenan por walk_to_board ASC, así que las primeras
+        // siempre son las más cercanas.
+        maxWalkingM: 700,
         maxAlternatives: 5,
       }),
     enabled,

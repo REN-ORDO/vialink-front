@@ -7,12 +7,13 @@ import type { TripRouteRecommendation } from '../../types';
  * distintos al primary, para que el user vea visualmente que tiene
  * más opciones aunque el sheet le muestre la primary committed.
  *
- * - Alt 1: ámbar dashed
- * - Alt 2: cyan dashed
- * - Cap a 2 alternativas (más satura el mapa)
+ * - Alt 1: ámbar (más cercana al user)
+ * - Alt 2: cyan
+ * - Alt 3: rosa
  *
  * Cada polyline:
- *   - Dashed, weight 4, opacity 0.65 (visible pero secundaria al primary)
+ *   - Sólida, weight 4.5, opacity 0.7. Sigue siendo secundaria al
+ *     primary (weight 6 + outline blanco + opacity 1).
  *   - Tap → onPickAlternative(alt) → re-commitea esa ruta como primary
  *   - Pill flotante en el midpoint con nombre + tiempo total
  */
@@ -80,7 +81,6 @@ export default function AlternativeRoutesLayer({
               color: style.color,
               weight: 4.5,
               opacity: 0.7,
-              dashArray: '10 6',
               lineCap: 'round',
               lineJoin: 'round',
             }}

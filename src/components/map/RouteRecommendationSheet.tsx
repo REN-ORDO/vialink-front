@@ -5,6 +5,8 @@ import {
   Clock3,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   ArrowRight,
   Gauge,
   MapPin,
@@ -109,9 +111,17 @@ export default function RouteRecommendationSheet({
         </div>
       )}
 
-      {/* Primary card: routing + live bus data, todo en uno */}
+      {/* Primary card: routing + live bus data, todo en uno.
+          Carousel arriba para saltar entre primary y alternativas con
+          flechas laterales — el dot del color de la ruta marca cuál
+          está activa. Refleja en mapa al instante (re-commit). */}
       {displayed && (
         <div className="px-5">
+          <RouteCarouselNav
+            recs={recs}
+            displayed={displayed}
+            onSelect={onSelectRecommendation}
+          />
           <PrimaryCard rec={displayed} userLocation={userLocation} />
         </div>
       )}
@@ -149,6 +159,86 @@ export default function RouteRecommendationSheet({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// RouteCarouselNav — flechas laterales para saltar entre recs
+// ============================================================
+
+/**
+ * Navegador estilo carousel arriba del PrimaryCard:
+ *
+ *   [ < ]    ● ○ ○ ○   Opción 1 de 4    [ > ]
+ *
+ * - Dot activo = pill del color de la ruta committeada.
+ * - Dots inactivos = gris claro.
+ * - Flechas saltan al anterior/siguiente rec del array y re-commitean
+ *   (esto re-pinta el mapa al instante).
+ * - No se muestra si solo hay 1 rec.
+ */
+function RouteCarouselNav({
+  recs,
+  displayed,
+  onSelect,
+}: {
+  recs: TripRouteRecommendation[];
+  displayed: TripRouteRecommendation;
+  onSelect?: (rec: TripRouteRecommendation) => void;
+}) {
+  if (recs.length <= 1) return null;
+  const currentIdx = recs.findIndex((r) => r.bus.id === displayed.bus.id);
+  if (currentIdx === -1) return null;
+
+  const prev = currentIdx > 0 ? recs[currentIdx - 1] : null;
+  const next = currentIdx < recs.length - 1 ? recs[currentIdx + 1] : null;
+
+  return (
+    <div className="flex items-center justify-between gap-3 mb-3 pt-1">
+      <button
+        onClick={prev ? () => onSelect?.(prev) : undefined}
+        disabled={!prev}
+        aria-label="Ruta anterior"
+        className="cursor-pointer w-10 h-10 rounded-full bg-white border border-black/[0.08] vl-elev-1 flex items-center justify-center active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+      >
+        <ChevronLeft
+          className="w-[18px] h-[18px] text-text-primary"
+          strokeWidth={2.6}
+        />
+      </button>
+
+      <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          {recs.map((rec, idx) => (
+            <span
+              key={rec.bus.id}
+              className={`rounded-full transition-all duration-200 ${
+                idx === currentIdx ? 'w-6 h-2' : 'w-2 h-2'
+              }`}
+              style={{
+                backgroundColor:
+                  idx === currentIdx ? rec.bus.routeColor : '#D1D5DB',
+              }}
+            />
+          ))}
+        </div>
+        <div className="text-[10.5px] uppercase tracking-wider font-bold text-text-secondary">
+          Opción {currentIdx + 1} de {recs.length}
+        </div>
+      </div>
+
+      <button
+        onClick={next ? () => onSelect?.(next) : undefined}
+        disabled={!next}
+        aria-label="Siguiente ruta"
+        className="cursor-pointer w-10 h-10 rounded-full bg-white border border-black/[0.08] vl-elev-1 flex items-center justify-center active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+      >
+        <ChevronRight
+          className="w-[18px] h-[18px] text-text-primary"
+          strokeWidth={2.6}
+        />
+      </button>
     </div>
   );
 }
