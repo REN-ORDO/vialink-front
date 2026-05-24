@@ -7,6 +7,7 @@ import type {
   BackendBusesAtPointResponse,
   BackendGeocodeResponse,
   BackendLandmarkNearbyResponse,
+  BackendRouteRecommendResponse,
 } from '../types/backend';
 
 const BASE = API_BASE;
@@ -152,6 +153,60 @@ export const handlers = [
         completed_pct: 0.34,
         remaining_km: 11.65,
       },
+    });
+  }),
+
+  http.post(`${BASE}/routing/recommend`, async ({ request }) => {
+    const body = (await request.json()) as {
+      user_location: { lat: number; lng: number };
+      destination: { lat: number; lng: number };
+    };
+    return HttpResponse.json<BackendRouteRecommendResponse>({
+      user_location: body.user_location,
+      destination: body.destination,
+      generated_at: new Date().toISOString(),
+      recommendations: [
+        {
+          rank: 1,
+          total_minutes: 19,
+          walking_to_board: {
+            paradero: {
+              id: 'lm-1',
+              name: 'Universidad del Norte',
+              lat: 11.0186,
+              lng: -74.8499,
+            },
+            distance_m: 0,
+            blocks: 1,
+            duration_minutes: 1,
+          },
+          bus: {
+            id: 'mock-bus-rec',
+            plate: 'GMP134',
+            route_id: 'r-mock-1',
+            route_code: 'S12',
+            route_name: 'Sabanilla - Centro',
+            route_color: '#A855F7',
+            wait_minutes: 8,
+            ride_minutes: 10,
+          },
+          walking_from_alight: {
+            paradero: {
+              id: 'lm-2',
+              name: 'Clínica Iberoamérica',
+              lat: 11.0048,
+              lng: -74.809,
+            },
+            distance_m: 80,
+            blocks: 1,
+            duration_minutes: 1,
+          },
+          polyline_bus: [
+            { lat: 11.0186, lng: -74.8499 },
+            { lat: 11.0048, lng: -74.809 },
+          ],
+        },
+      ],
     });
   }),
 

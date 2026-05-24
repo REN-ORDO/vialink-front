@@ -305,6 +305,49 @@ export type PlacePrediction = {
   location?: LatLng;
 };
 
+/**
+ * Recomendación de ruta puerta-a-puerta del endpoint /routing/recommend.
+ * Una opción de "para ir de aquí a allá, toma este bus".
+ *
+ * (Distinto de `RouteRecommendation` legacy del asistente, que es mucho
+ * más simple — TripRouteRecommendation es la versión "completa" con
+ * caminata + bus + polyline.)
+ */
+export type TripRouteRecommendation = {
+  rank: number;
+  totalMinutes: number;
+  walkingToBoard: {
+    paradero: { id: string; name: string; lat: number; lng: number };
+    distanceM: number;
+    blocks: number;
+    durationMinutes: number;
+  };
+  bus: {
+    id: string;
+    plate: string;
+    routeId: string;
+    routeCode: string;
+    routeName: string;
+    routeColor: string;
+    waitMinutes: number;
+    rideMinutes: number;
+  };
+  walkingFromAlight: {
+    paradero: { id: string; name: string; lat: number; lng: number };
+    distanceM: number;
+    blocks: number;
+    durationMinutes: number;
+  };
+  polylineBus: LatLng[];
+};
+
+export type TripRouteRecommendResponse = {
+  userLocation: LatLng;
+  destination: LatLng;
+  recommendations: TripRouteRecommendation[];
+  generatedAt: string;
+};
+
 export type ApiErrorShape = {
   statusCode: number;
   message: string;

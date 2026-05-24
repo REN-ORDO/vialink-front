@@ -20,6 +20,7 @@ import {
   backendMeToUser,
   backendAssistantMessageToChatMessage,
   backendGeocodeResultToSuggestion,
+  backendRouteRecommendResponseToTripRouteRec,
 } from './mappers';
 import type {
   AlternativeRoute,
@@ -35,6 +36,7 @@ import type {
   PlacePrediction,
   RouteRecommendation,
   Trip,
+  TripRouteRecommendResponse,
   User,
   WaitSession,
 } from '../types';
@@ -49,6 +51,7 @@ import type {
   BackendBusDetailsResponse,
   BackendBusListResponse,
   BackendBusesAtPointResponse,
+  BackendRouteRecommendResponse,
   BackendCorridorGeoJSON,
   BackendFavoritesResponse,
   BackendGeocodeResponse,
@@ -278,6 +281,41 @@ export const dataSource = {
       `/routes/nearby?lat=${location.lat}&lng=${location.lng}&radius_m=${radiusM}`,
     );
     return raw.routes;
+  },
+
+  /**
+   * Recomendación puerta-a-puerta de cómo llegar de A a B en bus.
+   * Devuelve top N opciones rankeadas por tiempo total.
+   *
+   * Cada recomendación incluye: paradero de abordaje + cuadras camina,
+   * bus específico (id, plate, ruta) + espera y tiempo de viaje,
+   * paradero de descenso + cuadras al destino, polyline del bus.
+   */
+  async recommendRoute(input: {
+    userLocation: LatLng;
+    destination: LatLng;
+    maxWalkingM?: number;
+    maxAlternatives?: number;
+  }): Promise<TripRouteRecommendResponse> {
+    if (USE_MOCKS) {
+      // Mock: una sola rec degenerada para que la UI no quede vacía en mocks.
+      return {
+        userLocation: input.userLocation,
+        destination: input.destination,
+        recommendations: [],
+        generatedAt: new Date().toISOString(),
+      };
+    }
+    const raw = await api.post<BackendRouteRecommendResponse>(
+      '/routing/recommend',
+      {
+        user_location: input.userLocation,
+        destination: input.destination,
+        max_walking_m: input.maxWalkingM ?? 500,
+        max_alternatives: input.maxAlternatives ?? 3,
+      },
+    );
+    return backendRouteRecommendResponseToTripRouteRec(raw);
   },
 
   // ============================================================

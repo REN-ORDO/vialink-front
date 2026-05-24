@@ -13,6 +13,8 @@ import type {
   User,
   ChatMessage,
   GeocodeSuggestion,
+  TripRouteRecommendation,
+  TripRouteRecommendResponse,
 } from '../types';
 import type {
   BackendLandmarkDetail,
@@ -29,6 +31,8 @@ import type {
   BackendMe,
   BackendAssistantMessage,
   BackendGeocodeResult,
+  BackendRouteRecommendation,
+  BackendRouteRecommendResponse,
 } from '../types/backend';
 
 // ============================================================
@@ -360,5 +364,52 @@ export function backendGeocodeResultToSuggestion(
     fullAddress: r.formatted_address,
     location: r.location,
     category: r.category,
+  };
+}
+
+// ============================================================
+// Routing (recomendación puerta-a-puerta)
+// ============================================================
+
+export function backendRouteRecToTripRouteRec(
+  b: BackendRouteRecommendation,
+): TripRouteRecommendation {
+  return {
+    rank: b.rank,
+    totalMinutes: b.total_minutes,
+    walkingToBoard: {
+      paradero: b.walking_to_board.paradero,
+      distanceM: b.walking_to_board.distance_m,
+      blocks: b.walking_to_board.blocks,
+      durationMinutes: b.walking_to_board.duration_minutes,
+    },
+    bus: {
+      id: b.bus.id,
+      plate: b.bus.plate,
+      routeId: b.bus.route_id,
+      routeCode: b.bus.route_code,
+      routeName: b.bus.route_name,
+      routeColor: b.bus.route_color,
+      waitMinutes: b.bus.wait_minutes,
+      rideMinutes: b.bus.ride_minutes,
+    },
+    walkingFromAlight: {
+      paradero: b.walking_from_alight.paradero,
+      distanceM: b.walking_from_alight.distance_m,
+      blocks: b.walking_from_alight.blocks,
+      durationMinutes: b.walking_from_alight.duration_minutes,
+    },
+    polylineBus: b.polyline_bus,
+  };
+}
+
+export function backendRouteRecommendResponseToTripRouteRec(
+  r: BackendRouteRecommendResponse,
+): TripRouteRecommendResponse {
+  return {
+    userLocation: r.user_location,
+    destination: r.destination,
+    recommendations: r.recommendations.map(backendRouteRecToTripRouteRec),
+    generatedAt: r.generated_at,
   };
 }

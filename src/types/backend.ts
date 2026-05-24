@@ -497,3 +497,45 @@ export interface BackendMetricsUpdateEvent {
   };
   timestamp: string;
 }
+
+// ===== Routing (recomendación de ruta puerta-a-puerta) =====
+export interface BackendRouteRecParadero {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export interface BackendRouteRecWalkingLeg {
+  paradero: BackendRouteRecParadero;
+  distance_m: number;
+  blocks: number;
+  duration_minutes: number;
+}
+
+export interface BackendRouteRecBus {
+  id: string;
+  plate: string;
+  route_id: string;
+  route_code: string;
+  route_name: string;
+  route_color: string;
+  wait_minutes: number;
+  ride_minutes: number;
+}
+
+export interface BackendRouteRecommendation {
+  rank: number;
+  total_minutes: number;
+  walking_to_board: BackendRouteRecWalkingLeg;
+  bus: BackendRouteRecBus;
+  walking_from_alight: BackendRouteRecWalkingLeg;
+  polyline_bus: LatLng[];
+}
+
+export interface BackendRouteRecommendResponse {
+  user_location: LatLng;
+  destination: LatLng;
+  recommendations: BackendRouteRecommendation[];
+  generated_at: string;
+}

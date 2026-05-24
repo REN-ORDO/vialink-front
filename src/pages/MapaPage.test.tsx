@@ -50,8 +50,8 @@ vi.mock('../hooks/useRealtime', () => ({
 
 import MapaPage from './MapaPage';
 
-describe('MapaPage · integración geocode → buses-at-point', () => {
-  it('al seleccionar una direccion, abre el sheet de buses-at-point', async () => {
+describe('MapaPage · integración geocode → route-recommendation', () => {
+  it('al seleccionar una direccion, abre el sheet de recomendacion de ruta', async () => {
     const user = userEvent.setup();
     renderWithProviders(<MapaPage />);
 
@@ -72,7 +72,9 @@ describe('MapaPage · integración geocode → buses-at-point', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByTestId('buses-at-point-sheet')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('route-recommendation-sheet'),
+        ).toBeInTheDocument();
       },
       { timeout: 2000 },
     );
