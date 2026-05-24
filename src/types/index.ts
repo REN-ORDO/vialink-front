@@ -283,6 +283,28 @@ export type GeocodeSuggestion = {
   category: string | null;
 };
 
+/**
+ * Predicción de autocomplete (Google Places NEW o Mapbox).
+ *
+ * - Google Places NEW: trae solo placeId + texto, sin lat/lng. Hay que
+ *   llamar Place Details para resolver location al hacer click.
+ * - Mapbox / backend /geocode: trae location inline (no requiere segunda
+ *   llamada). En ese caso `location` está presente y `placeId` no.
+ *
+ * El consumidor (AddressSearchBar) usa `location` para decidir si necesita
+ * resolver: si está presente, usa esos datos; si no, llama a Place Details.
+ */
+export type PlacePrediction = {
+  id: string;
+  label: string;
+  fullAddress: string;
+  category: string | null;
+  /** Solo Google: necesario para Place Details. */
+  placeId?: string;
+  /** Solo Mapbox / fallback: location ya resuelta. */
+  location?: LatLng;
+};
+
 export type ApiErrorShape = {
   statusCode: number;
   message: string;
