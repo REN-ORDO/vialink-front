@@ -32,7 +32,28 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/landmarks/nearby`, () =>
-    HttpResponse.json<BackendLandmarkNearbyResponse>({ landmarks: [] }),
+    HttpResponse.json<BackendLandmarkNearbyResponse>({
+      landmarks: [
+        {
+          id: 'lm-1',
+          name: 'Buenavista',
+          type: 'MALL',
+          address: 'Cra. 53 con Cl. 100',
+          location: { lat: 11.0046, lng: -74.8083 },
+          distance_m: 250,
+          routes_passing_count: 3,
+        },
+        {
+          id: 'lm-2',
+          name: 'Plaza de la Paz',
+          type: 'SQUARE',
+          address: 'Cra. 46 con Cl. 53',
+          location: { lat: 10.9842, lng: -74.7903 },
+          distance_m: 800,
+          routes_passing_count: 2,
+        },
+      ],
+    }),
   ),
 
   http.get(`${BASE}/buses/:id/details`, ({ params, request }) => {
