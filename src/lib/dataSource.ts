@@ -6,6 +6,7 @@ import {
   landmarkNearbyToParadero,
   busesAtPointToBusList,
   backendBusToBus,
+  backendBusListItemToBus,
   backendBusDetailsToBusDetails,
   backendTripToTrip,
   backendWaitSessionToWaitSession,
@@ -40,6 +41,7 @@ import type {
   BackendAssistantMessagesResponse,
   BackendAuthSession,
   BackendBusDetailsResponse,
+  BackendBusListResponse,
   BackendBusesAtPointResponse,
   BackendCorridorGeoJSON,
   BackendFavoritesResponse,
@@ -175,6 +177,28 @@ export const dataSource = {
       api.get<BackendRouteBusesResponse>(`/routes/${routeId}/buses`),
     ]);
     return raw.buses.map((b) => backendBusToBus(b, route.code, route));
+  },
+
+  /**
+   * Snapshot inicial de TODOS los buses IN_SERVICE en la ciudad.
+   * Pensado para que MapaPage popule el mapa al cargar antes de
+   * empezar a recibir bus_position por WebSocket (room city:BAQ).
+   *
+   * Si el backend falla, devolvemos busesMock como fallback grácil
+   * para que el mapa nunca quede vacio en demo.
+   */
+  async listAllBuses(city = 'BAQ'): Promise<Bus[]> {
+    if (USE_MOCKS) return busesMock;
+    try {
+      const raw = await api.get<BackendBusListResponse>(`/buses?city=${city}`);
+      return raw.buses.map(backendBusListItemToBus);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.warn('listAllBuses fallback a mock:', err.message);
+        return busesMock;
+      }
+      throw err;
+    }
   },
 
   // ============================================================

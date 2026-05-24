@@ -1,7 +1,9 @@
 import { http, HttpResponse } from 'msw';
 import { API_BASE } from './api';
+import { busesMock } from './mockData';
 import type {
   BackendBusDetailsResponse,
+  BackendBusListResponse,
   BackendBusesAtPointResponse,
   BackendGeocodeResponse,
   BackendLandmarkNearbyResponse,
@@ -55,6 +57,27 @@ export const handlers = [
       ],
     }),
   ),
+
+  http.get(`${BASE}/buses`, ({ request }) => {
+    const url = new URL(request.url);
+    const city = url.searchParams.get('city') ?? 'BAQ';
+    return HttpResponse.json<BackendBusListResponse>({
+      city,
+      count: busesMock.length,
+      buses: busesMock.map((b) => ({
+        id: b.id,
+        plate: `MOCK-${b.id.toUpperCase()}`,
+        route_id: `r-mock-${b.id}`,
+        route_code: b.rutaNombre,
+        location: { lat: b.lat, lng: b.lng },
+        heading: b.heading,
+        speed_kmh: 22,
+        fraction_of_corridor: 0.3,
+        status: 'IN_SERVICE',
+        last_seen_at: '2026-05-23T20:00:00Z',
+      })),
+    });
+  }),
 
   http.get(`${BASE}/buses/:id/details`, ({ params, request }) => {
     const url = new URL(request.url);

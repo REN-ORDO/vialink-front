@@ -125,6 +125,26 @@ export interface BackendRouteBusesResponse {
   buses: BackendBus[];
 }
 
+/** Item del endpoint GET /buses — snapshot inicial de TODOS los buses. */
+export interface BackendBusListItem {
+  id: string;
+  plate: string;
+  route_id: string;
+  route_code: string;
+  location: LatLng;
+  heading: number | null;
+  speed_kmh: number;
+  fraction_of_corridor: number;
+  status: 'IN_SERVICE' | 'OUT_OF_SERVICE' | 'BREAK';
+  last_seen_at: string;
+}
+
+export interface BackendBusListResponse {
+  city: string;
+  count: number;
+  buses: BackendBusListItem[];
+}
+
 // ===== Buses at point (endpoint estrella) =====
 export interface BackendNextBus {
   bus_id: string;

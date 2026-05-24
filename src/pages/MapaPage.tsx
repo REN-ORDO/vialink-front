@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Sparkles, Navigation2, LocateFixed, X, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Polyline } from 'react-leaflet';
@@ -12,29 +12,15 @@ import UserLocationMarker, {
 import BottomSheet from '../components/ui/BottomSheet';
 import AddressSearchBar from '../components/ui/AddressSearchBar';
 import BusDetailSheet from '../components/map/BusDetailSheet';
-import { busesMock, BARRANQUILLA_CENTER } from '../lib/mockData';
+import { BARRANQUILLA_CENTER } from '../lib/mockData';
 import { useParaderos } from '../hooks/useParaderos';
 import { useBusesAtPoint } from '../hooks/useBusesAtPoint';
 import { useBusDetails } from '../hooks/useBusDetails';
+import { useAllBuses } from '../hooks/useAllBuses';
 import { useRealtime } from '../hooks/useRealtime';
 import { useLocation, distanceKm } from '../hooks/useLocation';
 import { useAppStore } from '../store/useAppStore';
-import type { Bus, LatLng, Paradero } from '../types';
-
-function tickBuses(buses: Bus[]): Bus[] {
-  return buses.map((b) => {
-    const turn = (Math.random() - 0.5) * 24;
-    const newHeading = (((b.heading ?? 0) + turn) % 360 + 360) % 360;
-    const speed = 0.00045;
-    const rad = (newHeading * Math.PI) / 180;
-    return {
-      ...b,
-      heading: newHeading,
-      lat: b.lat + Math.cos(rad) * speed,
-      lng: b.lng + Math.sin(rad) * speed,
-    };
-  });
-}
+import type { LatLng, Paradero } from '../types';
 
 function nextEta(p: Paradero): number | null {
   if (p.rutas.length === 0) return null;
@@ -65,7 +51,6 @@ function etaColor(eta: number | null): string {
 
 export default function MapaPage() {
   const navigate = useNavigate();
-  const [buses, setBuses] = useState<Bus[]>(busesMock);
   const [tappedLocation, setTappedLocation] = useState<LatLng | null>(null);
   const [tappedLabel, setTappedLabel] = useState<string>('');
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
@@ -82,6 +67,12 @@ export default function MapaPage() {
   const userLocation: LatLng | undefined =
     lat != null && lng != null ? { lat, lng } : undefined;
 
+  // Snapshot + live WS updates de TODOS los buses de la ciudad.
+  // Esto reemplaza el viejo busesMock+tickBuses que movía los buses
+  // por random walk (pasaban por casas). Ahora siguen calles reales
+  // gracias al BusEngine + corridors refinados.
+  const { buses } = useAllBuses('BAQ');
+
   // Bus details + polyline cuando hay un bus seleccionado
   const { data: busDetails } = useBusDetails(selectedBusId, userLocation);
 
@@ -90,11 +81,6 @@ export default function MapaPage() {
     rooms: selectedBusId ? [`bus:${selectedBusId}`] : [],
     enabled: !!selectedBusId,
   });
-
-  useEffect(() => {
-    const id = setInterval(() => setBuses((prev) => tickBuses(prev)), 1800);
-    return () => clearInterval(id);
-  }, []);
 
   const center = useMemo(
     () => ({
