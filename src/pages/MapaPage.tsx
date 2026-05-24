@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sparkles, Navigation2, LocateFixed, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Polyline } from 'react-leaflet';
 import MapView from '../components/map/MapView';
 import ParaderoMarker from '../components/map/ParaderoMarker';
@@ -53,10 +53,25 @@ function etaColor(eta: number | null): string {
 
 export default function MapaPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   /** Destino que el user picó del buscador. Cuando hay destino abrimos
    *  el RouteRecommendationSheet con la mejor ruta para llegar ahí. */
   const [destination, setDestination] = useState<LatLng | null>(null);
   const [destinationLabel, setDestinationLabel] = useState<string>('');
+
+  // Si llegamos con ?dest_lat=X&dest_lng=Y (del asistente que sugirió
+  // OPEN_ROUTE_RECOMMENDATION), seteamos destination y limpiamos los
+  // params para que recargas no re-disparen la lógica.
+  useEffect(() => {
+    const lat = parseFloat(searchParams.get('dest_lat') ?? '');
+    const lng = parseFloat(searchParams.get('dest_lng') ?? '');
+    const label = searchParams.get('dest_label') ?? '';
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      setDestination({ lat, lng });
+      setDestinationLabel(label || 'destino del asistente');
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   /** Recomendación que el user committó (botón "Tomar este bus").
    *  Cuando está set, dibujamos polylines + paraderos en el mapa. */
   const [committedRec, setCommittedRec] =

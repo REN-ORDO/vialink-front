@@ -89,7 +89,21 @@ export type SuggestedAction =
   | { type: 'START_TRIP'; routeId: string; routeCode: string; destination?: string }
   | { type: 'SHOW_ROUTE'; routeId: string; routeCode: string }
   | { type: 'SHOW_LANDMARK'; landmarkId: string; landmarkName?: string }
-  | { type: 'OPEN_WAIT_PIN'; location: LatLng; routeId?: string };
+  | { type: 'OPEN_WAIT_PIN'; location: LatLng; routeId?: string }
+  /**
+   * El user preguntó "cómo llego a X" en el asistente. El frontend debe:
+   * 1. setear destination = la coord recibida
+   * 2. navegar al mapa
+   * 3. RouteRecommendationSheet aparece automáticamente con la rec
+   * 4. RouteVisualizer pinta polylines + paraderos + bus highlighted
+   *
+   * Equivalente exacto a haber buscado X en el AddressSearchBar.
+   */
+  | {
+      type: 'OPEN_ROUTE_RECOMMENDATION';
+      destination: LatLng;
+      destinationLabel?: string;
+    };
 
 export type AssistantAskResponse = {
   answer: string;

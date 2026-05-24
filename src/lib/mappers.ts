@@ -251,6 +251,12 @@ export function backendActionToFrontendAction(
         location: a.payload.location,
         routeId: a.payload.route_id,
       };
+    case 'OPEN_ROUTE_RECOMMENDATION':
+      return {
+        type: 'OPEN_ROUTE_RECOMMENDATION',
+        destination: a.payload.destination,
+        destinationLabel: a.payload.destination_label,
+      };
   }
 }
 

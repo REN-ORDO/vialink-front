@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Navigation, Route, Bell, ArrowUpRight } from 'lucide-react';
+import { MapPin, Navigation, Route, Bell, ArrowUpRight, Map } from 'lucide-react';
 import type { RouteRecommendation, SuggestedAction } from '../../types';
 
 type Props = {
@@ -124,6 +124,36 @@ export default function SuggestedActionCard({ action, recommendation }: Props) {
           </div>
         </div>
         <ArrowUpRight className="w-4 h-4 text-accent" strokeWidth={2.4} />
+      </button>
+    );
+  }
+
+  if (action.type === 'OPEN_ROUTE_RECOMMENDATION') {
+    // Pasamos destino vía query params para que MapaPage los lea al mount
+    // y abra el RouteRecommendationSheet automáticamente, equivalente
+    // a haber buscado el destino en el AddressSearchBar.
+    const params = new URLSearchParams({
+      dest_lat: String(action.destination.lat),
+      dest_lng: String(action.destination.lng),
+    });
+    if (action.destinationLabel) {
+      params.set('dest_label', action.destinationLabel);
+    }
+    return (
+      <button
+        onClick={() => navigate(`/?${params.toString()}`)}
+        className="cursor-pointer w-full bg-white rounded-[16px] border border-brand/30 vl-elev-1 px-4 py-3 flex items-center gap-3 active:bg-brand/5 transition-colors"
+      >
+        <div className="w-9 h-9 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
+          <Map className="w-4 h-4 text-brand" strokeWidth={2.4} />
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <div className="vl-eyebrow text-brand">Ver en mapa</div>
+          <div className="text-[14.5px] font-semibold text-text-primary truncate vl-headline mt-0.5">
+            Mostrar la ruta paso a paso
+          </div>
+        </div>
+        <ArrowUpRight className="w-4 h-4 text-brand" strokeWidth={2.4} />
       </button>
     );
   }

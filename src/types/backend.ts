@@ -354,7 +354,11 @@ export type BackendSuggestedAction =
     }
   | { type: 'SHOW_ROUTE'; payload: { route_id: string } }
   | { type: 'SHOW_LANDMARK'; payload: { landmark_id: string } }
-  | { type: 'OPEN_WAIT_PIN'; payload: { location: LatLng; route_id?: string } };
+  | { type: 'OPEN_WAIT_PIN'; payload: { location: LatLng; route_id?: string } }
+  | {
+      type: 'OPEN_ROUTE_RECOMMENDATION';
+      payload: { destination: LatLng; destination_label?: string };
+    };
 
 export interface BackendAssistantAskResponse {
   answer: string;
