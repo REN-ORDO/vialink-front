@@ -584,8 +584,12 @@ function PrimaryCard({
         </div>
       </div>
 
-      {/* Timeline 3 pasos */}
+      {/* Timeline 3 pasos — oculto temporalmente para que el sheet sea
+          más compacto y se enfoque en el bus en vivo + el ETA. Sigue
+          rendereándose dentro de AlternativeCard cuando el user expande
+          una alternativa (donde tiene más sentido ver el detalle).
       <Timeline rec={rec} />
+      */}
 
       {/* Bus en vivo — info del bus específico, refresh en tiempo real */}
       <LiveBusInfo rec={rec} busDetails={busDetails} />
