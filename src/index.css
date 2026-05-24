@@ -89,18 +89,23 @@
   /* ----------------------------------------------------------------
    * Animación suave entre updates de posición.
    *
-   * Match con SIMULATOR_BUS_TICK_MS=500ms del backend: la transition
-   * dura 550ms (10% más) para que la animación previa NO termine antes
-   * de que llegue la siguiente. Así el movimiento se ve como flow
-   * continuo sin "pausa" entre updates.
+   * Duración elegida para cubrir BIEN dos escenarios:
+   *   - Local agresivo (SIMULATOR_BUS_TICK_MS=250ms, 4 updates/seg):
+   *     cada nuevo update interrumpe la animación previa; el browser
+   *     re-targetea sin saltos (CSS transitions interpolan smooth en
+   *     mid-flight retargeting).
+   *   - Prod normal (1000ms, 1 update/seg):
+   *     1050ms cubre los 1000ms del tick con apenas 50ms de overlap
+   *     → animación termina justo cuando llega el siguiente update,
+   *     sin gap visible.
    *
-   * Si subís el tick a otro valor (env var), ajustá esta duración
-   * para que sea ~10% mayor.
+   * 1050ms es el sweet spot — no tocar a menos que el backend cambie
+   * el tick a algo > 1000ms.
    * --------------------------------------------------------------- */
   .leaflet-marker-icon.vl-bus3d-marker,
   .leaflet-marker-icon.vl-bus3d-dot-marker,
   .leaflet-marker-icon.vl-bus-active-marker {
-    transition: transform 550ms linear;
+    transition: transform 1050ms linear;
     will-change: transform;
   }
 
