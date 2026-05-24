@@ -1,51 +1,94 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { BARRANQUILLA_CENTER } from '../lib/mockData';
 
 export type LocationStatus =
+  /** Estado inicial antes de pedir GPS. */
   | 'idle'
+  /** Pidiendo permiso / esperando primer fix (sin cache). */
   | 'loading'
+  /** Permiso concedido + tenemos al menos un fix fresco. */
   | 'granted'
+  /** Usuario denegó (o el sistema bloqueó). */
   | 'denied'
+  /** Browser sin geolocation API. */
   | 'unsupported'
+  /** Falla transitoria (timeout, hardware). */
   | 'error';
+
+/** Si el fix persistido es más viejo que esto, lo descartamos al cargar. */
+const STALE_LOCATION_MS = 24 * 60 * 60 * 1000; // 24 h
 
 export function useLocation() {
   const userLat = useAppStore((s) => s.userLat);
   const userLng = useAppStore((s) => s.userLng);
+  const userLocationAt = useAppStore((s) => s.userLocationAt);
   const setUserLocation = useAppStore((s) => s.setUserLocation);
+  const clearUserLocation = useAppStore((s) => s.clearUserLocation);
+
   const [status, setStatus] = useState<LocationStatus>('idle');
+  const hadFreshCachedRef = useRef<boolean | null>(null);
 
   useEffect(() => {
+    // Decidir freshness una sola vez en mount. Date.now en effect es
+    // permitido por la React purity rule (efectos pueden ser impuros).
+    if (hadFreshCachedRef.current === null) {
+      const fresh =
+        userLat != null &&
+        userLng != null &&
+        userLocationAt != null &&
+        Date.now() - userLocationAt < STALE_LOCATION_MS;
+      hadFreshCachedRef.current = fresh;
+      // Si el cache está MUY viejo, limpiarlo para no mostrar location
+      // engañosa al usuario.
+      if (!fresh && userLocationAt != null) {
+        clearUserLocation();
+      }
+    }
+
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount, no cascade
       setStatus('unsupported');
-      setUserLocation(BARRANQUILLA_CENTER.lat, BARRANQUILLA_CENTER.lng);
       return;
     }
 
-    setStatus('loading');
+    let cancelled = false;
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserLocation(pos.coords.latitude, pos.coords.longitude, {
-          heading: pos.coords.heading,
-          accuracy: pos.coords.accuracy,
+    // Si no hay cache válido, marcamos 'loading' mientras esperamos fix.
+    // Si SÍ había, lo dejamos en 'idle' (marker visible vía lat/lng cacheados).
+    if (!hadFreshCachedRef.current) {
+      setStatus('loading');
+    }
+
+    // Permissions API: detecta 'denied' sin tener que esperar el timeout
+    // de GPS (20s).
+    if (navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: 'geolocation' as PermissionName })
+        .then((perm) => {
+          if (cancelled) return;
+          if (perm.state === 'denied') {
+            setStatus('denied');
+            clearUserLocation();
+            return;
+          }
+          perm.addEventListener?.('change', () => {
+            if (cancelled) return;
+            if (perm.state === 'denied') {
+              setStatus('denied');
+              clearUserLocation();
+            }
+          });
+        })
+        .catch(() => {
+          /* Permissions API no disponible (Safari antiguo). Ignorar. */
         });
-        setStatus('granted');
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          setStatus('denied');
-        } else {
-          setStatus('error');
-        }
-        setUserLocation(BARRANQUILLA_CENTER.lat, BARRANQUILLA_CENTER.lng);
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
-    );
+    }
 
+    // Un solo watcher: dispara el primer fix Y los updates subsecuentes.
+    // Más simple que getCurrentPosition + watchPosition en paralelo.
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        if (cancelled) return;
         setUserLocation(pos.coords.latitude, pos.coords.longitude, {
           heading: pos.coords.heading,
           accuracy: pos.coords.accuracy,
@@ -53,24 +96,50 @@ export function useLocation() {
         setStatus('granted');
       },
       (err) => {
-        if (err.code === err.PERMISSION_DENIED) setStatus('denied');
+        if (cancelled) return;
+        if (err.code === err.PERMISSION_DENIED) {
+          setStatus('denied');
+          clearUserLocation();
+          return;
+        }
+        // Timeout / hardware fail. NO borramos cache — el marker sigue
+        // visible con el último fix válido del store persistido.
+        if (!hadFreshCachedRef.current) {
+          setStatus('error');
+        }
       },
       {
         enableHighAccuracy: true,
-        timeout: 15_000,
-        maximumAge: 2_000,
+        // Timeout largo: GPS frío en móvil tarda 10-20s realista.
+        timeout: 20_000,
+        // Aceptamos cache reciente del browser (no fuerza siempre hardware).
+        maximumAge: 30_000,
       },
     );
 
     return () => {
+      cancelled = true;
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [setUserLocation]);
+    // Effect corre una vez al mount. setUserLocation/clearUserLocation
+    // son estables (Zustand actions).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     lat: userLat,
     lng: userLng,
     status,
+    /**
+     * `true` cuando es seguro mostrar el marker del usuario:
+     * tenemos lat/lng (incluyendo location cacheada del store persistido)
+     * y el status no indica denegado/unsupported.
+     */
+    hasLocation:
+      userLat != null &&
+      userLng != null &&
+      status !== 'denied' &&
+      status !== 'unsupported',
   };
 }
 

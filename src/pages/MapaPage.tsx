@@ -58,12 +58,10 @@ export default function MapaPage() {
   const { data: paraderos, isLoading } = useParaderos();
   const { data: busesAtPoint, isFetching: isFetchingBusesAtPoint } =
     useBusesAtPoint(tappedLocation);
-  const { lat, lng, status: locStatus } = useLocation();
+  const { lat, lng, hasLocation: hasUserLocation } = useLocation();
   const userHeading = useAppStore((s) => s.userHeading);
   const followUser = useAppStore((s) => s.followUser);
   const setFollowUser = useAppStore((s) => s.setFollowUser);
-  const hasUserLocation =
-    lat != null && lng != null && (locStatus === 'granted' || locStatus === 'idle');
   const userLocation: LatLng | undefined =
     lat != null && lng != null ? { lat, lng } : undefined;
 
