@@ -274,6 +274,87 @@
     100% { transform: scale(2.4); opacity: 0;    }
   }
 
+  /* ============================================================
+   * Markers resaltados de RouteVisualizer (paradero abordaje /
+   * descenso / destino seleccionados tras tomar una recomendación).
+   * ============================================================ */
+  .vl-rec-paradero-marker,
+  .vl-rec-destination-marker {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .vl-rec-paradero-wrap,
+  .vl-rec-destination-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .vl-rec-paradero-halo {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 40px; height: 40px;
+    margin-left: -20px; margin-top: -20px;
+    border-radius: 9999px;
+    background: rgba(0, 135, 90, 0.30); /* verde abordaje */
+    animation: vlPulse 1.8s ease-out infinite;
+  }
+
+  .vl-rec-paradero-halo--alight {
+    background: rgba(30, 94, 255, 0.30); /* azul descenso */
+  }
+
+  .vl-rec-paradero-pin {
+    position: relative;
+    z-index: 1;
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    background: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(10, 10, 10, 0.3), 0 0 0 2px rgba(255, 255, 255, 0.9);
+  }
+
+  .vl-rec-paradero-pin--board {
+    border: 2px solid #00875A;
+  }
+
+  .vl-rec-paradero-pin--alight {
+    border: 2px solid #1E5EFF;
+  }
+
+  .vl-rec-destination-halo {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 44px; height: 44px;
+    margin-left: -22px; margin-top: -22px;
+    border-radius: 9999px;
+    background: rgba(255, 107, 53, 0.32);
+    animation: vlPulse 1.6s ease-out infinite;
+  }
+
+  .vl-rec-destination-pin {
+    position: relative;
+    z-index: 1;
+    width: 32px; height: 32px;
+    border-radius: 9999px;
+    background: #FFFFFF;
+    border: 2.5px solid #FF6B35;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 3px 10px rgba(10, 10, 10, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.95);
+  }
+
   .vl-shimmer {
     background: linear-gradient(
       90deg,

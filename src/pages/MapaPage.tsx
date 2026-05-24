@@ -13,6 +13,7 @@ import BottomSheet from '../components/ui/BottomSheet';
 import AddressSearchBar from '../components/ui/AddressSearchBar';
 import BusDetailSheet from '../components/map/BusDetailSheet';
 import RouteRecommendationSheet from '../components/map/RouteRecommendationSheet';
+import RouteVisualizer from '../components/map/RouteVisualizer';
 import { BARRANQUILLA_CENTER } from '../lib/mockData';
 import { useParaderos } from '../hooks/useParaderos';
 import { useBusDetails } from '../hooks/useBusDetails';
@@ -20,7 +21,7 @@ import { useAllBuses } from '../hooks/useAllBuses';
 import { useRealtime } from '../hooks/useRealtime';
 import { useLocation, distanceKm } from '../hooks/useLocation';
 import { useAppStore } from '../store/useAppStore';
-import type { LatLng, Paradero } from '../types';
+import type { LatLng, Paradero, TripRouteRecommendation } from '../types';
 
 function nextEta(p: Paradero): number | null {
   if (p.rutas.length === 0) return null;
@@ -55,6 +56,10 @@ export default function MapaPage() {
    *  el RouteRecommendationSheet con la mejor ruta para llegar ahí. */
   const [destination, setDestination] = useState<LatLng | null>(null);
   const [destinationLabel, setDestinationLabel] = useState<string>('');
+  /** Recomendación que el user committó (botón "Tomar este bus").
+   *  Cuando está set, dibujamos polylines + paraderos en el mapa. */
+  const [committedRec, setCommittedRec] =
+    useState<TripRouteRecommendation | null>(null);
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
   const [paraderoFilter, setParaderoFilter] = useState('');
   const { data: paraderos, isLoading } = useParaderos();
@@ -110,7 +115,20 @@ export default function MapaPage() {
         {(paraderos ?? []).map((p) => (
           <ParaderoMarker key={p.id} paradero={p} />
         ))}
-        {busDetails && busDetails.polyline.length > 1 && (
+        {/* Visualización de la ruta committeada (polyline bus + caminata +
+            paraderos abordaje/descenso). NO renderiza el polyline del
+            corridor completo, solo el tramo board→alight. */}
+        {committedRec && destination && userLocation && (
+          <RouteVisualizer
+            recommendation={committedRec}
+            userLocation={userLocation}
+            destination={destination}
+          />
+        )}
+        {/* Polyline del corridor completo del bus seleccionado (solo si
+            NO hay una recomendación committeada — el RouteVisualizer ya
+            dibuja un tramo más útil). */}
+        {!committedRec && busDetails && busDetails.polyline.length > 1 && (
           <Polyline
             positions={busDetails.polyline.map((p) => [p.lat, p.lng])}
             pathOptions={{
@@ -130,6 +148,7 @@ export default function MapaPage() {
               setSelectedBusId(id);
               setDestination(null);
               setDestinationLabel('');
+              setCommittedRec(null);
             }}
             isSelected={selectedBusId === b.id}
           />
@@ -175,11 +194,13 @@ export default function MapaPage() {
           onClose={() => {
             setDestination(null);
             setDestinationLabel('');
+            setCommittedRec(null);
           }}
           onSelectRecommendation={(rec) => {
-            // Resaltar el bus elegido sobre el mapa (abre BusDetailSheet
-            // por encima del recommendation sheet — el usuario ve qué bus
-            // específico va a tomar y su polyline).
+            // Commit: dibuja polyline + paraderos resaltados + highlight
+            // del bus específico en el mapa, y abre BusDetailSheet con
+            // ETA en vivo al usuario.
+            setCommittedRec(rec);
             setSelectedBusId(rec.bus.id);
           }}
         />
