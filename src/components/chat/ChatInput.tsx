@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Mic, ArrowUp } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 
 type Props = {
   onSend: (text: string) => void;
@@ -33,13 +33,6 @@ export default function ChatInput({ onSend, disabled }: Props) {
           className="flex-1 bg-transparent outline-none text-[15px] placeholder:text-text-secondary disabled:opacity-50"
         />
       </div>
-      <button
-        type="button"
-        aria-label="Dictar por voz"
-        className="cursor-pointer w-12 h-12 rounded-full bg-surface-raised border border-black/[0.05] flex items-center justify-center active:bg-black/5 transition-colors shrink-0"
-      >
-        <Mic className="w-[18px] h-[18px] text-text-primary" strokeWidth={2.2} />
-      </button>
       <button
         type="submit"
         aria-label="Enviar"
