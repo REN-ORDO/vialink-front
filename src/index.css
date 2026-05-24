@@ -114,6 +114,33 @@
     box-shadow: 0 2px 6px rgba(10, 10, 10, 0.35), 0 0 0 1px rgba(10, 10, 10, 0.18);
   }
 
+  .vl-bus3d-halo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 22px;
+    height: 22px;
+    margin-left: -11px;
+    margin-top: -11px;
+    border-radius: 9999px;
+    background: rgba(30, 94, 255, 0.32);
+    animation: vlPulse 1.8s ease-out infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .vl-bus3d-halo-lg {
+    width: 64px;
+    height: 64px;
+    margin-left: -32px;
+    margin-top: -32px;
+    background: rgba(30, 94, 255, 0.22);
+  }
+
+  .vl-bus3d-marker.is-selected .vl-bus3d-img {
+    filter: drop-shadow(0 0 6px rgba(30, 94, 255, 0.55));
+  }
+
   .vl-user-marker-wrap {
     background: transparent !important;
     border: none !important;
