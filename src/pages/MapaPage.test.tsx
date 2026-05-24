@@ -78,6 +78,24 @@ describe('MapaPage · integración geocode → buses-at-point', () => {
     );
   });
 
+  it('filtra paraderos al escribir en el input de filtro', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MapaPage />);
+
+    const filterInput = await screen.findByTestId('paradero-filter-input');
+    await user.type(filterInput, 'Buenavista');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Buenavista/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Plaza de la Paz/i)).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText('Limpiar filtro'));
+    await waitFor(() => {
+      expect(screen.getByText(/Plaza de la Paz/i)).toBeInTheDocument();
+    });
+  });
+
   it('al clickear un bus mock (id no-UUID), abre el sheet con mensaje de simulado', async () => {
     const user = userEvent.setup();
     renderWithProviders(<MapaPage />);

@@ -110,6 +110,30 @@ export function landmarkNearbyToParadero(
 // Bus
 // ============================================================
 
+/**
+ * Heuristica para asignar operatorId cuando solo conocemos route_code
+ * (snapshot /buses, WS bus_position events). Codigos T* son Transmetro
+ * (BRT) → amarillo. El resto → azul.
+ */
+export function operatorFromRouteCode(routeCode: string): OperatorId {
+  if (routeCode.startsWith('T')) return 'bus_amarillo_pto';
+  return 'bus_azul_pto';
+}
+
+/** Mapea BackendBusListItem (snapshot GET /buses) → Bus. */
+export function backendBusListItemToBus(
+  b: import('../types/backend').BackendBusListItem,
+): Bus {
+  return {
+    id: b.id,
+    rutaNombre: b.route_code,
+    lat: b.location.lat,
+    lng: b.location.lng,
+    heading: b.heading ?? 0,
+    operatorId: operatorFromRouteCode(b.route_code),
+  };
+}
+
 export function backendBusToBus(
   b: BackendBus,
   routeCode: string,

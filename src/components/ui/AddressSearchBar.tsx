@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGeocode } from '../../hooks/useGeocode';
-import type { GeocodeSuggestion, LatLng } from '../../types';
+import { dataSource } from '../../lib/dataSource';
+import type { GeocodeSuggestion, LatLng, PlacePrediction } from '../../types';
 
 type Props = {
   proximity?: LatLng;
@@ -15,8 +16,33 @@ export default function AddressSearchBar({
 }: Props) {
   const [q, setQ] = useState('');
   const [focused, setFocused] = useState(false);
-  const { data: suggestions, isFetching } = useGeocode(q, proximity);
-  const open = focused && (q.length >= 3 || (suggestions?.length ?? 0) > 0);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const {
+    data: predictions,
+    isFetching,
+    getSessionToken,
+    rotateSessionToken,
+  } = useGeocode(q, proximity);
+  const open = focused && (q.length >= 3 || (predictions?.length ?? 0) > 0);
+
+  async function handlePick(prediction: PlacePrediction) {
+    if (resolvingId) return; // bloqueo doble-click
+    setResolvingId(prediction.id);
+    try {
+      const suggestion = await dataSource.resolvePlace(prediction, {
+        sessionToken: getSessionToken(),
+      });
+      onSelect(suggestion);
+      setQ(suggestion.label);
+      setFocused(false);
+      // Cerrar la sesión: el próximo autocomplete usa token nuevo.
+      rotateSessionToken();
+    } catch (err) {
+      console.warn('No se pudo resolver el lugar:', err);
+    } finally {
+      setResolvingId(null);
+    }
+  }
 
   return (
     <div className="relative w-full">
@@ -38,36 +64,43 @@ export default function AddressSearchBar({
               Buscando…
             </li>
           )}
-          {!isFetching && (suggestions?.length ?? 0) === 0 && q.length >= 3 && (
-            <li
-              className="px-4 py-3 text-text-secondary text-sm"
-              data-testid="address-empty"
-            >
-              No encontramos esa dirección
-            </li>
-          )}
-          {suggestions?.map((s) => (
-            <li key={s.id}>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  onSelect(s);
-                  setQ(s.label);
-                  setFocused(false);
-                }}
-                className="cursor-pointer w-full text-left px-4 py-3 hover:bg-surface-raised active:bg-surface-raised border-b border-black/[0.05] last:border-b-0"
-                data-testid="address-suggestion"
+          {!isFetching &&
+            (predictions?.length ?? 0) === 0 &&
+            q.length >= 3 && (
+              <li
+                className="px-4 py-3 text-text-secondary text-sm"
+                data-testid="address-empty"
               >
-                <div className="font-medium text-text-primary text-[14.5px] vl-headline">
-                  {s.label}
-                </div>
-                <div className="text-xs text-text-secondary truncate mt-0.5">
-                  {s.fullAddress}
-                </div>
-              </button>
-            </li>
-          ))}
+                No encontramos esa dirección
+              </li>
+            )}
+          {predictions?.map((p) => {
+            const isResolving = resolvingId === p.id;
+            return (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  disabled={!!resolvingId}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handlePick(p)}
+                  className="cursor-pointer w-full text-left px-4 py-3 hover:bg-surface-raised active:bg-surface-raised border-b border-black/[0.05] last:border-b-0 disabled:opacity-60"
+                  data-testid="address-suggestion"
+                >
+                  <div className="font-medium text-text-primary text-[14.5px] vl-headline">
+                    {p.label}
+                    {isResolving && (
+                      <span className="ml-2 text-xs text-text-secondary font-normal">
+                        resolviendo…
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-text-secondary truncate mt-0.5">
+                    {p.fullAddress}
+                  </div>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -86,6 +86,31 @@
     border: none !important;
   }
 
+  /* ----------------------------------------------------------------
+   * Animación suave entre updates de posición.
+   * Sin esto, cada WS event hace teleport del marker (jump cada 1s)
+   * y el usuario percibe los buses como "stopped between jumps".
+   * Con la transición, el marker interpola visualmente entre la
+   * posición vieja y la nueva durante el tick — movimiento continuo.
+   *
+   * 1.05s ligeramente sobre el tickMs=1000ms del BusEngine para que
+   * la siguiente actualización llegue justo cuando la anterior termina,
+   * evitando "pause" entre transiciones.
+   * --------------------------------------------------------------- */
+  .leaflet-marker-icon.vl-bus3d-marker,
+  .leaflet-marker-icon.vl-bus3d-dot-marker,
+  .leaflet-marker-icon.vl-bus-active-marker {
+    transition: transform 1.05s linear;
+    will-change: transform;
+  }
+
+  /* User marker: animación más corta (GPS update interval es variable
+     y queremos sentir "live"). */
+  .leaflet-marker-icon.vl-user-marker-wrap {
+    transition: transform 0.5s ease-out;
+    will-change: transform;
+  }
+
   .vl-bus3d-wrap {
     position: relative;
     display: flex;
@@ -103,6 +128,8 @@
     will-change: transform;
     user-select: none;
     -webkit-user-drag: none;
+    /* Heading rotation: suave, más corto que la posición. */
+    transition: transform 0.4s ease-out;
   }
 
   .vl-bus3d-dot {

@@ -2,10 +2,16 @@ import { api, ApiError, USE_MOCKS } from './api';
 import { paraderosMock } from './mockData';
 import { mockAskAssistant } from './llmMock';
 import {
+  autocompletePlaces,
+  getPlaceDetails,
+  hasGooglePlacesKey,
+} from './googlePlaces';
+import {
   landmarkDetailToParadero,
   landmarkNearbyToParadero,
   busesAtPointToBusList,
   backendBusToBus,
+  backendBusListItemToBus,
   backendBusDetailsToBusDetails,
   backendTripToTrip,
   backendWaitSessionToWaitSession,
@@ -26,6 +32,7 @@ import type {
   Incident,
   LatLng,
   Paradero,
+  PlacePrediction,
   RouteRecommendation,
   Trip,
   User,
@@ -40,6 +47,7 @@ import type {
   BackendAssistantMessagesResponse,
   BackendAuthSession,
   BackendBusDetailsResponse,
+  BackendBusListResponse,
   BackendBusesAtPointResponse,
   BackendCorridorGeoJSON,
   BackendFavoritesResponse,
@@ -177,6 +185,28 @@ export const dataSource = {
     return raw.buses.map((b) => backendBusToBus(b, route.code, route));
   },
 
+  /**
+   * Snapshot inicial de TODOS los buses IN_SERVICE en la ciudad.
+   * Pensado para que MapaPage popule el mapa al cargar antes de
+   * empezar a recibir bus_position por WebSocket (room city:BAQ).
+   *
+   * Si el backend falla, devolvemos busesMock como fallback grácil
+   * para que el mapa nunca quede vacio en demo.
+   */
+  async listAllBuses(city = 'BAQ'): Promise<Bus[]> {
+    if (USE_MOCKS) return busesMock;
+    try {
+      const raw = await api.get<BackendBusListResponse>(`/buses?city=${city}`);
+      return raw.buses.map(backendBusListItemToBus);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.warn('listAllBuses fallback a mock:', err.message);
+        return busesMock;
+      }
+      throw err;
+    }
+  },
+
   // ============================================================
   // DISCOVERY · Bus details (modal click-on-bus)
   // ============================================================
@@ -292,6 +322,79 @@ export const dataSource = {
       }
       throw err;
     }
+  },
+
+  /**
+   * Búsqueda de lugares (autocomplete).
+   *
+   * Si VITE_GOOGLE_MAPS_API_KEY está configurada, usa Google Places API NEW:
+   *   - Mejor cobertura de direcciones colombianas que Mapbox
+   *   - Predicciones rápidas con `placeId` (lat/lng se resuelve en click via
+   *     `resolvePlace`)
+   *   - sessionToken bundlea autocompletes + 1 detalle en una sola sesión
+   *     facturable
+   *
+   * Sin la key, cae al backend `/geocode` (Mapbox) y mapea las respuestas
+   * a `PlacePrediction` con `location` ya resuelta (eager).
+   */
+  async searchPlaces(
+    query: string,
+    opts: { proximity?: LatLng; sessionToken: string; limit?: number },
+  ): Promise<PlacePrediction[]> {
+    const trimmed = query.trim();
+    if (trimmed.length < 3) return [];
+
+    if (hasGooglePlacesKey() && !USE_MOCKS) {
+      try {
+        return await autocompletePlaces(trimmed, {
+          sessionToken: opts.sessionToken,
+          proximity: opts.proximity,
+        });
+      } catch (err) {
+        console.warn('Google Places autocomplete falló, fallback:', err);
+        // cae al backend abajo
+      }
+    }
+
+    // Fallback: backend /geocode (Mapbox) o mocks. Devolvemos predicciones
+    // con location eager-resuelta — no requieren llamada extra de details.
+    const suggestions = await this.geocode(trimmed, opts.proximity, opts.limit ?? 5);
+    return suggestions.map((s) => ({
+      id: s.id,
+      label: s.label,
+      fullAddress: s.fullAddress,
+      category: s.category,
+      location: s.location, // Mapbox/mocks traen location de una vez
+    }));
+  },
+
+  /**
+   * Resuelve una `PlacePrediction` a `GeocodeSuggestion` con lat/lng.
+   *
+   * - Si la predicción ya trae `location` (Mapbox/mocks): identity wrap, sin
+   *   llamadas de red.
+   * - Si solo trae `placeId` (Google): llama Place Details. Pasar el mismo
+   *   `sessionToken` usado en `searchPlaces` para no duplicar el billing.
+   */
+  async resolvePlace(
+    prediction: PlacePrediction,
+    opts: { sessionToken?: string } = {},
+  ): Promise<GeocodeSuggestion> {
+    if (prediction.location) {
+      return {
+        id: prediction.id,
+        label: prediction.label,
+        fullAddress: prediction.fullAddress,
+        location: prediction.location,
+        category: prediction.category,
+      };
+    }
+    if (!prediction.placeId) {
+      throw new Error('PlacePrediction sin location ni placeId');
+    }
+    return getPlaceDetails(prediction.placeId, {
+      sessionToken: opts.sessionToken,
+    });
   },
 
   // ============================================================

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Sparkles, Navigation2, LocateFixed, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Sparkles, Navigation2, LocateFixed, X, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Polyline } from 'react-leaflet';
 import MapView from '../components/map/MapView';
@@ -12,29 +12,15 @@ import UserLocationMarker, {
 import BottomSheet from '../components/ui/BottomSheet';
 import AddressSearchBar from '../components/ui/AddressSearchBar';
 import BusDetailSheet from '../components/map/BusDetailSheet';
-import { busesMock, BARRANQUILLA_CENTER } from '../lib/mockData';
+import { BARRANQUILLA_CENTER } from '../lib/mockData';
 import { useParaderos } from '../hooks/useParaderos';
 import { useBusesAtPoint } from '../hooks/useBusesAtPoint';
 import { useBusDetails } from '../hooks/useBusDetails';
+import { useAllBuses } from '../hooks/useAllBuses';
 import { useRealtime } from '../hooks/useRealtime';
 import { useLocation, distanceKm } from '../hooks/useLocation';
 import { useAppStore } from '../store/useAppStore';
-import type { Bus, LatLng, Paradero } from '../types';
-
-function tickBuses(buses: Bus[]): Bus[] {
-  return buses.map((b) => {
-    const turn = (Math.random() - 0.5) * 24;
-    const newHeading = (((b.heading ?? 0) + turn) % 360 + 360) % 360;
-    const speed = 0.00045;
-    const rad = (newHeading * Math.PI) / 180;
-    return {
-      ...b,
-      heading: newHeading,
-      lat: b.lat + Math.cos(rad) * speed,
-      lng: b.lng + Math.sin(rad) * speed,
-    };
-  });
-}
+import type { LatLng, Paradero } from '../types';
 
 function nextEta(p: Paradero): number | null {
   if (p.rutas.length === 0) return null;
@@ -65,21 +51,25 @@ function etaColor(eta: number | null): string {
 
 export default function MapaPage() {
   const navigate = useNavigate();
-  const [buses, setBuses] = useState<Bus[]>(busesMock);
   const [tappedLocation, setTappedLocation] = useState<LatLng | null>(null);
   const [tappedLabel, setTappedLabel] = useState<string>('');
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
+  const [paraderoFilter, setParaderoFilter] = useState('');
   const { data: paraderos, isLoading } = useParaderos();
   const { data: busesAtPoint, isFetching: isFetchingBusesAtPoint } =
     useBusesAtPoint(tappedLocation);
-  const { lat, lng, status: locStatus } = useLocation();
+  const { lat, lng, hasLocation: hasUserLocation } = useLocation();
   const userHeading = useAppStore((s) => s.userHeading);
   const followUser = useAppStore((s) => s.followUser);
   const setFollowUser = useAppStore((s) => s.setFollowUser);
-  const hasUserLocation =
-    lat != null && lng != null && (locStatus === 'granted' || locStatus === 'idle');
   const userLocation: LatLng | undefined =
     lat != null && lng != null ? { lat, lng } : undefined;
+
+  // Snapshot + live WS updates de TODOS los buses de la ciudad.
+  // Esto reemplaza el viejo busesMock+tickBuses que movía los buses
+  // por random walk (pasaban por casas). Ahora siguen calles reales
+  // gracias al BusEngine + corridors refinados.
+  const { buses } = useAllBuses('BAQ');
 
   // Bus details + polyline cuando hay un bus seleccionado
   const { data: busDetails } = useBusDetails(selectedBusId, userLocation);
@@ -89,11 +79,6 @@ export default function MapaPage() {
     rooms: selectedBusId ? [`bus:${selectedBusId}`] : [],
     enabled: !!selectedBusId,
   });
-
-  useEffect(() => {
-    const id = setInterval(() => setBuses((prev) => tickBuses(prev)), 1800);
-    return () => clearInterval(id);
-  }, []);
 
   const center = useMemo(
     () => ({
@@ -105,10 +90,19 @@ export default function MapaPage() {
 
   const sorted = useMemo(() => {
     if (!paraderos) return [];
-    return [...paraderos].sort(
+    const q = paraderoFilter.trim().toLowerCase();
+    const filtered = q
+      ? paraderos.filter(
+          (p) =>
+            p.nombre.toLowerCase().includes(q) ||
+            p.direccion.toLowerCase().includes(q) ||
+            p.rutas.some((r) => r.nombre.toLowerCase().includes(q)),
+        )
+      : paraderos;
+    return [...filtered].sort(
       (a, b) => distanceKm(center, a) - distanceKm(center, b),
     );
-  }, [paraderos, center]);
+  }, [paraderos, paraderoFilter, center]);
 
   return (
     <div className="relative flex-1 overflow-hidden">
@@ -253,6 +247,29 @@ export default function MapaPage() {
             </div>
           </div>
 
+          <div className="mb-3 h-11 flex items-center gap-2 bg-surface-raised rounded-xl px-3.5 border border-black/[0.04]">
+            <Search
+              className="w-[16px] h-[16px] text-text-secondary shrink-0"
+              strokeWidth={2.4}
+            />
+            <input
+              value={paraderoFilter}
+              onChange={(e) => setParaderoFilter(e.target.value)}
+              placeholder="Filtrar paradero o ruta"
+              className="flex-1 bg-transparent outline-none text-[14px] placeholder:text-text-secondary/80 vl-headline"
+              data-testid="paradero-filter-input"
+            />
+            {paraderoFilter && (
+              <button
+                onClick={() => setParaderoFilter('')}
+                className="cursor-pointer text-[10px] font-bold text-text-secondary px-2 py-1 rounded-full hover:bg-white vl-eyebrow"
+                aria-label="Limpiar filtro"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
           <div className="rounded-[18px] bg-white border border-black/[0.05] overflow-hidden vl-elev-1">
             {isLoading && (
               <>
@@ -264,7 +281,9 @@ export default function MapaPage() {
 
             {!isLoading && sorted.length === 0 && (
               <div className="text-center text-sm text-text-secondary py-12">
-                Sin paraderos cerca
+                {paraderoFilter
+                  ? `Sin resultados para "${paraderoFilter}"`
+                  : 'Sin paraderos cerca'}
               </div>
             )}
 

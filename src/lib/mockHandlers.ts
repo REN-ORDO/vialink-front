@@ -1,7 +1,9 @@
 import { http, HttpResponse } from 'msw';
 import { API_BASE } from './api';
+import { busesMock } from './mockData';
 import type {
   BackendBusDetailsResponse,
+  BackendBusListResponse,
   BackendBusesAtPointResponse,
   BackendGeocodeResponse,
   BackendLandmarkNearbyResponse,
@@ -32,8 +34,50 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/landmarks/nearby`, () =>
-    HttpResponse.json<BackendLandmarkNearbyResponse>({ landmarks: [] }),
+    HttpResponse.json<BackendLandmarkNearbyResponse>({
+      landmarks: [
+        {
+          id: 'lm-1',
+          name: 'Buenavista',
+          type: 'MALL',
+          address: 'Cra. 53 con Cl. 100',
+          location: { lat: 11.0046, lng: -74.8083 },
+          distance_m: 250,
+          routes_passing_count: 3,
+        },
+        {
+          id: 'lm-2',
+          name: 'Plaza de la Paz',
+          type: 'SQUARE',
+          address: 'Cra. 46 con Cl. 53',
+          location: { lat: 10.9842, lng: -74.7903 },
+          distance_m: 800,
+          routes_passing_count: 2,
+        },
+      ],
+    }),
   ),
+
+  http.get(`${BASE}/buses`, ({ request }) => {
+    const url = new URL(request.url);
+    const city = url.searchParams.get('city') ?? 'BAQ';
+    return HttpResponse.json<BackendBusListResponse>({
+      city,
+      count: busesMock.length,
+      buses: busesMock.map((b) => ({
+        id: b.id,
+        plate: `MOCK-${b.id.toUpperCase()}`,
+        route_id: `r-mock-${b.id}`,
+        route_code: b.rutaNombre,
+        location: { lat: b.lat, lng: b.lng },
+        heading: b.heading,
+        speed_kmh: 22,
+        fraction_of_corridor: 0.3,
+        status: 'IN_SERVICE',
+        last_seen_at: '2026-05-23T20:00:00Z',
+      })),
+    });
+  }),
 
   http.get(`${BASE}/buses/:id/details`, ({ params, request }) => {
     const url = new URL(request.url);
