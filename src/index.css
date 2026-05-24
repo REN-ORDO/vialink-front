@@ -88,19 +88,19 @@
 
   /* ----------------------------------------------------------------
    * Animación suave entre updates de posición.
-   * Sin esto, cada WS event hace teleport del marker (jump cada 1s)
-   * y el usuario percibe los buses como "stopped between jumps".
-   * Con la transición, el marker interpola visualmente entre la
-   * posición vieja y la nueva durante el tick — movimiento continuo.
    *
-   * 1.05s ligeramente sobre el tickMs=1000ms del BusEngine para que
-   * la siguiente actualización llegue justo cuando la anterior termina,
-   * evitando "pause" entre transiciones.
+   * Match con SIMULATOR_BUS_TICK_MS=500ms del backend: la transition
+   * dura 550ms (10% más) para que la animación previa NO termine antes
+   * de que llegue la siguiente. Así el movimiento se ve como flow
+   * continuo sin "pausa" entre updates.
+   *
+   * Si subís el tick a otro valor (env var), ajustá esta duración
+   * para que sea ~10% mayor.
    * --------------------------------------------------------------- */
   .leaflet-marker-icon.vl-bus3d-marker,
   .leaflet-marker-icon.vl-bus3d-dot-marker,
   .leaflet-marker-icon.vl-bus-active-marker {
-    transition: transform 1.05s linear;
+    transition: transform 550ms linear;
     will-change: transform;
   }
 
